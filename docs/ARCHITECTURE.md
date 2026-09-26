@@ -20,7 +20,7 @@ ProjectGraph turns a GitHub repo into a living mind map of what to build next. T
 | Diff rendering | `diff` npm package (`createTwoFilesPatch`) | Server generates unified diff; client just colors lines. |
 | AI | **Gemini API** via `@google/genai` | Model name in `GEMINI_MODEL` env var (use the current Flash model from AI Studio). JSON mode + response schema. |
 | Validation | `zod` | Every AI response is validated before it touches the DB. |
-| GitHub | `@octokit/rest` | Personal access token, server-side only. |
+| GitHub | `@octokit/rest` | MVP: one service token from `GITHUB_TOKEN`, server-side only. Every `github.ts` function takes an optional `token` argument (see §6 "Auth-ready design"). |
 | Database | **MongoDB Atlas** via official `mongodb` driver | No Mongoose. One main collection. |
 | Hosting | **DigitalOcean App Platform** | Auto-deploys from `main`. |
 | Domain | GoDaddy domain → DO app | |
@@ -164,6 +164,15 @@ All routes: JSON in, JSON out. Errors return `{ error: string }` with a 4xx/5xx 
 | `POST /api/pr` | `{ mapId, nodeId }` | `{ map }` | Uses stored proposal → branch `projectgraph/<nodeId>` → commit files → open PR → `status = "pr_open"` |
 | `POST /api/sync` | `{ mapId }` | `{ map, changed: boolean }` | Compare `lastSyncedSha...defaultBranch`. If new commits: mark shipped, detect new work, sprout ideas |
 
+### Auth-ready design (build later, design now)
+
+The MVP uses one service token, so it can read any public repo but **write only where that token's account has push access** (the demo repo). We do not build login for the MVP, but we shape the code so "Sign in with GitHub" is a small swap later:
+
+- **Every function in `github.ts` takes a `token` argument** (`getSnapshot(owner, name, token?)`, `createPr(..., token?)`, etc.) and defaults to `process.env.GITHUB_TOKEN`. Never read the env var anywhere else.
+- **Routes obtain the token through one helper** (for example `getRequestToken(req)` in `github.ts`). In the MVP it returns the env token. With OAuth it would return the user's token from a signed httpOnly cookie. Routes never touch tokens directly.
+- **Write-permission check:** `github.getRepoAccess(owner, name, token?)` returns `{ canWrite: boolean }` (from the repo's `permissions.push`). If `canWrite` is false, the UI shows the diff and "Copy prompt" and disables "Open PR" with the note "Preview only: PRs need write access". This is the same graceful fallback as PLAN.md's fallback table.
+- **Later (stretch):** GitHub OAuth (`/api/auth/login`, `/api/auth/callback`, token in a signed httpOnly cookie, and an owner field on maps). See PLAN.md Phase 5. Adding it requires a §2 dependency decision first.
+
 ### Route internals
 
 **analyze**
@@ -274,4 +283,6 @@ A small separate repo we control (e.g. `chronos-scheduler`, ~10 files, a simple 
 
 ## 12. Out of scope (do not build)
 
-Login/accounts, private repos, live keystroke watching, auto-merging PRs, chat UI, multi-user presence, repos bigger than ~40 relevant files.
+For the MVP: login/accounts, private repos, live keystroke watching, auto-merging PRs, chat UI, multi-user presence, repos bigger than ~40 relevant files.
+
+**Deferred, not rejected:** GitHub OAuth login is the first stretch item after the MVP passes its run-through (PLAN.md Phase 5). It also unlocks private repos and PRs on the user's own repos. Build it only then, but keep the `token` parameter design in §6 from day one.

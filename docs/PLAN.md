@@ -74,7 +74,8 @@ Why this split: everyone starts **unblocked**. The frontend pair builds against 
 
 ### Sebastian (P4) — awake 9–2:30
 - [ ] `db.ts`: cached Mongo client, `getMap`, `saveMap`, `updateMap`, plus the `ai_cache` helpers (then move `gemini.ts`'s in-memory cache onto them with Josiah)
-- [ ] `github.ts`: `parseRepoUrl`, `getSnapshot` (filters and caps from ARCHITECTURE §6). Import the `Snapshot` type from `prompts.ts`.
+- [ ] `github.ts`: `parseRepoUrl`, `getSnapshot` (filters and caps from ARCHITECTURE §6). Import the `Snapshot` type from `prompts.ts`. **Auth-ready:** every function takes an optional `token` (default `process.env.GITHUB_TOKEN`); routes get it through one `getRequestToken(req)` helper; add `getRepoAccess()` returning `{ canWrite }` (ARCHITECTURE §6 "Auth-ready design").
+- [ ] Sebastian + Julian: when `canWrite` is false, `DetailPanel` disables "Open PR" and shows "Preview only: PRs need write access"
 - [ ] `GET` / `PATCH /api/maps/[id]` against Mongo (keep the `MOCK_MODE` branch)
 - [ ] `api-client.ts`: typed wrappers for every §6 route so the UI never calls `fetch` directly. **Do this early, since both frontend devs use it.**
 - [ ] Standalone PR test script: create a branch, commit 1 file, open a PR on the demo repo
@@ -123,7 +124,8 @@ Handoff hour (1:30–2:30, all awake): flip `MOCK_MODE=false`, confirm routes, r
 
 ## Phase 5: Polish, sleep, ship
 
-- [ ] **11 PM–1:30 AM:** polish visuals (Joeco leads). At most **one** stretch item, only if the run-through passed:
+- [ ] **11 PM–1:30 AM:** polish visuals (Joeco leads). At most **one** stretch item, only if the run-through passed, **in this priority order**:
+  - [ ] **GitHub OAuth login** (Sebastian): "Sign in with GitHub"; the user's token replaces the service token via `getRequestToken`; maps get an owner. Needs a §2 dependency decision and an OAuth app with callbacks for localhost and the deployed domain. Skip it if the run-through hasn't passed twice.
   - [ ] "Sync now" button
   - [ ] Filter by type / hide shipped
   - [ ] Create GitHub issue from a node
