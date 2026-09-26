@@ -11,6 +11,7 @@
 | `docs/PLAN.md` | Who owns what, sleep shifts, the current phase, your task checklist, fallback rules |
 | `docs/CONTEXT.md` | Why decisions were made, the pitch, differentiation, demo script |
 | `docs/prototype.html` | The intended look and interactions. Open in a browser. Its `IDEAS` object is fixture data |
+| `CODEX_PROJECT_PROMPT.md` | **Not authoritative.** An early idea prompt that assumes Vite + FastAPI and an approve/reject flow. The team chose Next.js; if it disagrees with the docs above, the docs win |
 
 ## 2. Where to look for a specific question
 
