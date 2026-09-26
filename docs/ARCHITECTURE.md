@@ -60,7 +60,7 @@ offshoot/
 ├─ .env.example                   P4
 ├─ src/
 │  ├─ app/
-│  │  ├─ page.tsx                 P2  landing page
+│  │  ├─ page.tsx                 P1  landing page
 │  │  ├─ map/[id]/page.tsx        P1  map page (layout: graph + panels)
 │  │  └─ api/
 │  │     ├─ analyze/route.ts      P3
@@ -75,7 +75,7 @@ offshoot/
 │  │  ├─ DetailPanel.tsx          P2
 │  │  ├─ DiffView.tsx             P2
 │  │  ├─ ActivityFeed.tsx         P2
-│  │  └─ Header.tsx               P2
+│  │  └─ Header.tsx               P1
 │  └─ lib/
 │     ├─ types.ts                 P3  ★ SHARED CONTRACT — change only with team OK
 │     ├─ schemas.ts               P3  zod + Gemini response schemas
@@ -84,7 +84,7 @@ offshoot/
 │     ├─ github.ts                P4
 │     ├─ db.ts                    P4
 │     ├─ mock.ts                  P3  fixture map for MOCK_MODE
-│     └─ api-client.ts            P2  typed fetch wrappers used by all UI
+│     └─ api-client.ts            P4  typed fetch wrappers used by all UI
 ```
 
 ## 5. Shared types (`src/lib/types.ts`) — the contract

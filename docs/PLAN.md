@@ -1,110 +1,136 @@
 # Offshoot — Build Plan
 
-Hackathon clock: started **Fri 11 PM** (H0). Now ≈ **H6 (Sat 5 AM)**.
-**MVP frozen at H24 (Sat 11 PM).** H24–H36 = polish, sleep, demo, submit. Submission deadline **Sun 11 AM**. Submit by **10 AM**.
+Hackathon clock: started **Fri 11 PM** (H0). Plan written at **Sat 9 AM (H10)**.
+**MVP frozen Sat 11 PM (H24).** Then polish, sleep, demo, submit. Submission deadline **Sun 11 AM**. Submit by **10 AM**.
 
 Tick boxes as you finish them. Each phase has an **exit check**; don't start the next phase's integration until it passes.
 
-## Roles
+## Team and roles
 
-| Who | Role | Owns |
-|---|---|---|
-| **P1** | Graph (frontend) | `Graph.tsx`, `Legend.tsx`, `map/[id]/page.tsx`, polling, animations |
-| **P2** | Panels (frontend) | `page.tsx` (landing), `DetailPanel`, `DiffView`, `ActivityFeed`, `Header`, `api-client.ts` |
-| **P3** | AI (backend) | `types.ts`, `schemas.ts`, `prompts.ts`, `gemini.ts`, `mock.ts`, routes `analyze`, `expand`, `build` |
-| **P4** | GitHub + infra + demo | `github.ts`, `db.ts`, routes `maps`, `pr`, `sync`, DO deploy, domain, demo repo, Devpost |
+| Who | Strength | Role | Owns (files) |
+|---|---|---|---|
+| **Joeco** | UI/UX | **P1 Graph + look and feel** | `Graph.tsx`, `Legend.tsx`, `map/[id]/page.tsx` (layout), `page.tsx` (landing), `Header.tsx`, `globals.css` / Tailwind styling |
+| **Julian** | Python, learning frontend | **P2 Panels** | `DetailPanel.tsx`, `DiffView.tsx`, `ActivityFeed.tsx` |
+| **Sebastian** | Integration | **P4 GitHub + DB + wiring** | `github.ts`, `db.ts`, `api-client.ts`, routes `maps`, `pr`, `sync`, DO deploy, wiring polling and state into the map page |
+| **Josiah** | Architecture, ideas | **P3 AI + lead** | `types.ts`, `schemas.ts`, `prompts.ts`, `gemini.ts`, `mock.ts`, routes `analyze`, `expand`, `build`, demo repo, review/merge, demo script, Devpost |
 
-The strongest dev takes **P4**, because PR plumbing and deploy are the least forgiving parts. They also own merging to `main`.
+Why this split: everyone starts **unblocked**. The frontend pair builds against the mock API that already works (`MOCK_MODE=true`). The backend pair builds against the shared types. Nobody waits on anyone until integration.
+
+**Julian's on-ramp:** his panels are plain React components that take a `node` or `map` prop and render it. The prototype (`docs/prototype.html`) shows exactly what each looks like, and Joeco's styling makes them pretty. He can copy patterns from Joeco's first component.
+
+## Working alone (rules for everyone)
+
+1. **Base:** Josiah merges `josiah` into `main` first (see Phase 0). Everyone branches from `main`: `joeco/graph`, `julian/panels`, `sebastian/github-db`.
+2. **Mock first:** `MOCK_MODE=true` in `.env.local`. `GET /api/maps/demo` returns a full map, and expand/build/pr/sync all work in memory. Build your piece against that before touching real keys.
+3. **Stay in your files.** Need a change in someone else's file? Post it in team chat.
+4. **`types.ts` is the contract.** Never edit it alone.
+5. **Small PRs** into `main`, at least every 2 hours. `npm run build` must pass before you merge. Get a thumbs up from anyone awake; if only your pair is awake, approve each other.
+6. **Coding agents:** start every session with "read CLAUDE.md and docs/". Give the agent **one task from this file at a time**.
+7. **Blocked more than 30 minutes?** Post in chat right away. Don't sit on it.
+8. **Before you sleep:** post a handoff note: what's done, what's next, your branch name, and anything broken. Set two alarms.
+
+## Sleep shifts (two awake at all times until 6 PM)
+
+| Shift | Who | Sleeps | Why then |
+|---|---|---|---|
+| A | **Joeco + Julian** | **Sat 10:00 AM – 1:30 PM** | Their work is mock-driven, so nothing blocks them later. They wake up to a finished backend to integrate with. |
+| B | **Josiah + Sebastian** | **Sat 2:30 PM – 6:00 PM** | Backend routes are done by 2:30, and the frontend pair spends this window on UI against real routes. |
+| All | everyone | **Sun 2:00 AM – 7:00 AM** | After the freeze and polish. Code written tired costs the demo. |
+
+**1:30 – 2:30 PM is the handoff hour: all four awake.** Flip `MOCK_MODE=false` and agree on what Joeco and Julian build while Josiah and Sebastian sleep.
 
 ---
 
-## Phase 0: Foundation · H6–H8 (5–7 AM) · everyone together
+## Phase 0: Foundation · Sat 9:00–10:00 AM · everyone together
 
-- [ ] P4: Create GitHub repo, `npx create-next-app@latest offshoot --ts --tailwind --app --src-dir`, push to `main`
-- [ ] P4: Add `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `.env.example`; add all 3 teammates as collaborators
-- [x] P3: Create `src/lib/types.ts` exactly as in ARCHITECTURE §5; create `src/lib/mock.ts` with a realistic 12-node `CodeMap` (reuse ideas from the prototype)
-- [x] P3: `MOCK_MODE` → every API route returns/updates the mock map in memory
-- [ ] P4: Accounts and keys: Gemini API key (AI Studio), MongoDB Atlas free cluster + URI, GitHub PAT, DigitalOcean app connected to repo
-- [ ] P4: Deploy the hello-world build to DO App Platform
-- [ ] All: `npm install`, `.env.local` copied, `npm run dev` works on every laptop
+- [x] Next.js app scaffolded (`create-next-app`, TypeScript, Tailwind, App Router, `src/`)
+- [x] ARCHITECTURE §2 dependencies installed
+- [x] Josiah: `src/lib/types.ts` exactly as ARCHITECTURE §5
+- [x] Josiah: `src/lib/mock.ts` 12-node `CodeMap` and in-memory store
+- [x] Josiah: `MOCK_MODE` → every API route works in memory
+- [x] Josiah: `gemini.ts` `generateJSON()`, `schemas.ts`, `prompts.ts` (untested against a real key)
+- [ ] **Josiah: open a PR `josiah` → `main` and merge it** so everyone starts from the same base
+- [ ] **Sebastian: accounts and keys** — Gemini key (AI Studio) + model id, MongoDB Atlas free cluster + URI (Network Access `0.0.0.0/0`), GitHub PAT (`repo` scope), DigitalOcean app connected to the repo. Share keys privately, never in the repo.
+- [ ] Sebastian: add teammates as collaborators
+- [ ] Everyone: `git pull`, `npm install`, `cp .env.example .env.local`, `npm run dev`, and open `http://localhost:3000/api/maps/demo`
+- [ ] Sebastian: deploy the hello-world build to DigitalOcean App Platform
 
-**Exit check:** every laptop runs the app. `GET /api/maps/demo` returns the mock map in MOCK_MODE. The DO URL loads.
+**Exit check:** every laptop runs the app. `/api/maps/demo` returns the mock map. The DO URL loads.
 
-## Phase 1: Build in parallel against mocks · H8–H14 (7 AM–1 PM)
+## Phase 1: Build in parallel · Sat 10 AM–2:30 PM
 
-**Sleep in shifts.** P1 + P3 sleep 7–11 AM while P2 + P4 work. Then P2 + P4 sleep 11 AM–3 PM (they overlap with Phase 2; that's fine).
-
-P1 Graph
-- [ ] `Graph.tsx` renders the mock map with react-force-graph-2d (dynamic import, `ssr:false`)
-- [ ] Synthetic root node + links for `parentId === null`
-- [ ] Custom node drawing: color by type, size by effort, dashed/solid/green by status, labels
+### Joeco (P1) — asleep 10:00–1:30, so he starts here at 1:30
+- [ ] `Graph.tsx` renders `GET /api/maps/demo` with react-force-graph-2d (`dynamic(..., { ssr: false })`). *Done when:* 12 nodes and a root appear.
+- [ ] Synthetic root node; links for `parentId === null`
+- [ ] Custom drawing per ARCHITECTURE §8: color by type, size by effort, dashed / pulsing / solid / green by status, labels
 - [ ] Click a node → `onSelect(nodeId)`; clicking the background selects the root
-- [ ] Legend overlay
+- [ ] `Legend.tsx`; root progress ring (shipped / total)
+- [ ] Landing page look (`page.tsx`) and `Header.tsx`; global styling tokens the panels reuse
 
-P2 Panels
-- [ ] Landing page: repo URL input + "Try demo repo" button → `POST /api/analyze` → redirect to `/map/[id]`
-- [ ] Loading state with rotating status lines ("Reading file tree…", "Finding ideas…")
-- [ ] `api-client.ts`: typed wrappers for every route in ARCHITECTURE §6
-- [ ] `DetailPanel` for every status (see ARCHITECTURE §8), including Copy prompt
-- [ ] `DiffView`: colors a unified diff string (+ green, − red, @@ blue)
-- [ ] `ActivityFeed` renders `map.events` newest first
+### Julian (P2) — asleep 10:00–1:30, so he starts here at 1:30
+- [ ] `DiffView.tsx`: takes a unified-diff string; + green, − red, `@@` blue. *Done when:* it renders the mock proposal's diff. **Easiest first task; learn React here.**
+- [ ] `ActivityFeed.tsx`: renders `map.events` newest first with an icon per `kind`
+- [ ] `DetailPanel.tsx` for every status (ARCHITECTURE §8): suggested (Build it · Expand · Copy prompt), building (spinner), proposal (DiffView + Open PR / Discard), pr_open (link · Expand), shipped (sha · Expand). Buttons can call handler props that do nothing yet.
 
-P3 AI
-- [x] `gemini.ts` `generateJSON()` with zod validation + 1 retry
-- [x] `schemas.ts`: Analyze, Expand, Build, Sync schemas (zod + Gemini responseSchema)
-- [ ] `prompts.analyze` → test on the demo repo; iterate until ideas are **specific and cite files**
-- [ ] `/api/analyze` end to end (uses P4's `getSnapshot`; stub it with a local JSON snapshot until P4 is ready)
+### Sebastian (P4) — awake 9–2:30
+- [ ] `db.ts`: cached Mongo client, `getMap`, `saveMap`, `updateMap`, plus the `ai_cache` helpers (then move `gemini.ts`'s in-memory cache onto them with Josiah)
+- [ ] `github.ts`: `parseRepoUrl`, `getSnapshot` (filters and caps from ARCHITECTURE §6). Import the `Snapshot` type from `prompts.ts`.
+- [ ] `GET` / `PATCH /api/maps/[id]` against Mongo (keep the `MOCK_MODE` branch)
+- [ ] `api-client.ts`: typed wrappers for every §6 route so the UI never calls `fetch` directly. **Do this early, since both frontend devs use it.**
+- [ ] Standalone PR test script: create a branch, commit 1 file, open a PR on the demo repo
+- [ ] `POST /api/pr` using the stored proposal (§6 "pr")
+- [ ] `POST /api/sync`, deterministic part only: `Merge pull request #N` → node `shipped`
+
+### Josiah (P3) — awake 9–2:30
+- [ ] **Demo repo** (`chronos-scheduler`, ~10 files) in its own repo; PAT has write access
+- [ ] `/api/analyze` real path, using a local JSON snapshot until Sebastian's `getSnapshot` lands
+- [ ] Tune `prompts.analyze` on the demo repo until ideas are **specific and cite files**. This is the moat.
 - [ ] `prompts.expand` + `/api/expand`
+- [ ] `prompts.build` + `/api/build` (full file contents → server diff via `createTwoFilesPatch` → `node.proposal`)
+- [ ] Move the AI cache into Mongo with Sebastian
 
-P4 GitHub/DB
-- [ ] `db.ts`: cached Mongo client, `getMap`, `saveMap`, `updateMap`
-- [ ] `github.ts`: `parseRepoUrl`, `getSnapshot` (filters + caps from ARCHITECTURE §6)
-- [ ] `GET` / `PATCH /api/maps/[id]`
-- [ ] **Demo repo**: vibe-code a tiny scheduling app (~10 files) in its own repo. Keep it simple and working.
-- [ ] Standalone PR test script: create a branch, commit 1 file, and open a PR on the demo repo
+**Exit check (2:30 PM):** analyzing the demo repo saves a map to Mongo; `GET /api/maps/:id` returns it; graph and panels render the mock map; the PR test script opens a real PR.
 
-**Exit check:** analyzing the real demo repo saves a map to Mongo; `GET /api/maps/:id` returns it; the graph and panels render the mock map.
+## Phase 2: Integrate + Build/PR · Sat 1:30–6:00 PM · Joeco + Julian awake, Josiah + Sebastian asleep 2:30–6
 
-## Phase 2: Integrate + Build/PR · H14–H18 (1–5 PM)
+Handoff hour (1:30–2:30, all awake): flip `MOCK_MODE=false`, confirm routes, read each other's handoff notes.
 
-- [ ] P1/P2: Switch UI from mock to real API (`MOCK_MODE=false`); map page loads a real map
-- [ ] P1: Merge incoming maps into existing node objects (keep x/y); new nodes spawn at their parent
-- [ ] P2: Expand button works end to end
-- [ ] P3: `prompts.build` + `/api/build` (full file contents → server diff → proposal)
-- [ ] P4: `/api/pr` using the stored proposal
-- [ ] P2: Build flow UI: Build it → spinner → DiffView → Open PR → PR link
+- [ ] Joeco: map page state: one `map` object, every API response → `setMap`; merge incoming nodes into existing objects by id (keep `x/y`); new nodes spawn at their parent
+- [ ] Joeco + Julian: wire `DetailPanel` handlers through `api-client.ts`: Expand, Build, Open PR, Discard
+- [ ] Julian: build flow UI: Build it → spinner → DiffView → Open PR → PR link
+- [ ] Joeco: landing → `POST /api/analyze` → redirect to `/map/[id]`, with rotating loading lines ("Reading file tree…", "Finding ideas…")
+- [ ] Julian: error states: bad URL, private repo, Gemini failure show a readable message, never a blank screen
 
-**Exit check:** on the deployed site, click a node on the demo repo, see a diff, and get a **real PR on GitHub**.
+**Exit check (6 PM, all awake):** on the deployed site, click a node on the demo repo, see a diff, and get a **real PR on GitHub**.
 
-## Phase 3: Sync loop · H18–H22 (5–9 PM)
+## Phase 3: Sync loop · Sat 6:00–9:00 PM · all awake
 
-- [ ] P4: `/api/sync` compare commits; deterministic `Merge pull request #N` → shipped
-- [ ] P3: `prompts.sync` + validation (shippedIds, detected, sprouts)
-- [ ] P4: Wire the AI part into `/api/sync`, update `lastSyncedSha`, push events
-- [ ] P1: Poll `/api/sync` every 20s; animate shipped (green) and sprouted nodes; root progress ring
-- [ ] P2: Activity feed shows commit / ship / sprout / detect events nicely; header shows "Watching main · synced <sha>"
+- [ ] Josiah: `prompts.sync` + validation (ids exist, `detected`, `sprouts`)
+- [ ] Sebastian: wire the AI part into `/api/sync`, update `lastSyncedSha`, push events
+- [ ] Joeco: poll `/api/sync` every 20 s (pause during in-flight build/PR); animate shipped (green) and sprouted nodes; progress ring
+- [ ] Julian: activity feed shows commit / ship / sprout / detect events nicely
+- [ ] Joeco: header shows "Watching main · synced <sha>"
 
-**Exit check:** merge the PR on GitHub → within 30s the node turns green and 2–3 new ideas sprout. Push a hand-written commit → a "detected" node appears.
+**Exit check:** merge the PR on GitHub → within 30 s the node turns green and 2–3 ideas sprout. Push a hand-written commit → a "detected" node appears.
 
-## Phase 4: Harden · H22–H24 (9–11 PM)
+## Phase 4: Harden · Sat 9:00–11:00 PM
 
-- [ ] P3: AI cache on; pre-run analyze/expand/build for the demo repo so the demo runs from cache
-- [ ] P2: Error states (bad URL, private repo, Gemini failure) show a readable message, never a blank screen
-- [ ] P4: Production deploy on the GoDaddy domain; env vars set on DO
-- [ ] All: Full run-through of the demo script twice on the **deployed** site
+- [ ] Josiah: AI cache on; pre-run analyze/expand/build for the demo repo so the demo runs from cache
+- [ ] Sebastian: production deploy on the GoDaddy domain; env vars set on DO
+- [ ] All: full run-through of the demo script **twice on the deployed site**
 
-### 🔒 MVP FREEZE at H24. After this, only bug fixes and polish on `main`.
+### 🔒 MVP FREEZE Sat 11 PM. After this, only bug fixes and polish on `main`.
 
-## Phase 5: Polish, sleep, ship · H24–H36
+## Phase 5: Polish, sleep, ship
 
-- [ ] H24–H27 (11 PM–2 AM): Polish visuals. At most **one** stretch item, only if the run-through passed:
-  - [ ] "Sync now" button (manual trigger)
+- [ ] **11 PM–1:30 AM:** polish visuals (Joeco leads). At most **one** stretch item, only if the run-through passed:
+  - [ ] "Sync now" button
   - [ ] Filter by type / hide shipped
   - [ ] Create GitHub issue from a node
-- [ ] H27–H32 (2–7 AM): **Sleep.** Code written tired now costs you the demo.
-- [ ] H32–H33: Final run-through; record a **backup demo video** (screen recording of the full loop)
-- [ ] H33–H34: Devpost write-up, screenshots, list the tracks we're entering (Microsoft, Gemini, MongoDB, DigitalOcean, GoDaddy)
-- [ ] H34: **Submit by 10 AM.** Rehearse the pitch 3×.
+- [ ] **2 AM–7 AM: everyone sleeps.**
+- [ ] **7–8 AM:** final run-through; record a **backup demo video** of the full loop
+- [ ] **8–9 AM:** Devpost write-up, screenshots, list tracks (Microsoft, Gemini, MongoDB, DigitalOcean, GoDaddy) (Josiah + Sebastian)
+- [ ] **9–10 AM: submit.** Rehearse the pitch 3× (Josiah pitches, Joeco drives the demo).
 
 ---
 
@@ -112,11 +138,12 @@ P4 GitHub/DB
 
 | If at… | this isn't working | do this |
 |---|---|---|
-| H14 | Real analyze on the demo repo | Demo from a hand-tuned cached analysis; keep the real route for other repos |
-| H18 | Real PR creation | Build shows the diff + "Copy prompt" + "Create issue"; PR becomes the stretch goal |
-| H22 | AI part of sync | Keep deterministic PR-merge detection only (merge → green); sprout via Expand |
-| H22 | Polling | "Sync now" button calling the same route |
-| Any | Someone is blocked > 45 min | Post in chat immediately; P4 or the lead pairs with them |
+| Sat 2:30 PM | Real analyze on the demo repo | Demo from a hand-tuned cached analysis; keep the real route for other repos |
+| Sat 6:00 PM | Real PR creation | Build shows the diff + "Copy prompt" + "Create issue"; PR becomes the stretch goal |
+| Sat 9:00 PM | AI part of sync | Keep deterministic PR-merge detection only (merge → green); sprout via Expand |
+| Sat 9:00 PM | Polling | "Sync now" button calling the same route |
+| Any | Someone is blocked > 30 min | Post in chat immediately; the lead pairs with them |
+| Any | Wifi / Gemini down on stage | `MOCK_MODE=true` demo, or play the backup video |
 
 ## Demo script (≈3 min)
 
