@@ -13,14 +13,25 @@ function getClient(): GoogleGenAI {
 const g = globalThis as unknown as { __aiCache?: Map<string, unknown> };
 const cache = (g.__aiCache ??= new Map<string, unknown>());
 
+const TRANSIENT = new Set([429, 500, 503]);
+
+// Retries temporary API failures (rate limit / overload) with backoff; other errors surface immediately.
 async function callModel(model: string, prompt: string, responseSchema: object): Promise<string> {
-  const res = await getClient().models.generateContent({
-    model,
-    contents: prompt,
-    config: { responseMimeType: "application/json", responseJsonSchema: responseSchema },
-  });
-  if (!res.text) throw new Error("Gemini returned an empty response");
-  return res.text;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await getClient().models.generateContent({
+        model,
+        contents: prompt,
+        config: { responseMimeType: "application/json", responseJsonSchema: responseSchema },
+      });
+      if (!res.text) throw new Error("Gemini returned an empty response");
+      return res.text;
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (attempt >= 3 || status === undefined || !TRANSIENT.has(status)) throw e;
+      await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
+    }
+  }
 }
 
 export async function generateJSON<T>(
@@ -38,8 +49,9 @@ export async function generateJSON<T>(
   let lastError = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     const p = attempt === 0 ? prompt : `${prompt}\n\nYour previous reply was invalid: ${lastError}\nReturn corrected JSON only.`;
+    const text = await callModel(model, p, responseSchema);
     try {
-      const parsed = zodSchema.parse(JSON.parse(await callModel(model, p, responseSchema)));
+      const parsed = zodSchema.parse(JSON.parse(text));
       if (useCache) cache.set(key, parsed);
       return parsed;
     } catch (e) {

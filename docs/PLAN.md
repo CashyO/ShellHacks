@@ -49,10 +49,10 @@ Why this split: everyone starts **unblocked**. The frontend pair builds against 
 - [x] Josiah: `src/lib/mock.ts` 12-node `CodeMap` and in-memory store
 - [x] Josiah: `MOCK_MODE` → every API route works in memory
 - [x] Josiah: `gemini.ts` `generateJSON()`, `schemas.ts`, `prompts.ts` (untested against a real key)
-- [ ] **Josiah: open a PR `josiah` → `main` and merge it** so everyone starts from the same base
+- [x] **Josiah: open a PR `josiah` → `main` and merge it** so everyone starts from the same base
 - [ ] **Sebastian: accounts and keys** — Gemini key (AI Studio) + model id, MongoDB Atlas free cluster + URI (Network Access `0.0.0.0/0`), GitHub PAT (`repo` scope), DigitalOcean app connected to the repo. Share keys privately, never in the repo.
-- [ ] Sebastian: add teammates as collaborators
-- [ ] Everyone: `git pull`, `npm install`, `cp .env.example .env.local`, `npm run dev`, and open `http://localhost:3000/api/maps/demo`
+- [x] Sebastian: add teammates as collaborators
+- [x] Everyone: `git pull`, `npm install`, `cp .env.example .env.local`, `npm run dev`, and open `http://localhost:3000/api/maps/demo`
 - [ ] Sebastian: deploy the hello-world build to DigitalOcean App Platform
 
 **Exit check:** every laptop runs the app. `/api/maps/demo` returns the mock map. The DO URL loads.
