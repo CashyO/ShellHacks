@@ -1,5 +1,3 @@
-import { DEMO_OWNER, DEMO_REPO, DEMO_SNAPSHOT } from "./demo-snapshot";
-import type { Snapshot } from "./prompts";
 import type { CodeMap, IdeaDraft, IdeaNode, MapEvent, NodeStatus } from "./types";
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -56,7 +54,7 @@ export function getMockMap(id: string): CodeMap | undefined {
   return maps.get(id);
 }
 
-export function saveMockMap(map: CodeMap): CodeMap {
+function saveMockMap(map: CodeMap): CodeMap {
   map.updatedAt = new Date().toISOString();
   maps.set(map._id, map);
   return map;
@@ -125,33 +123,4 @@ export function mockSync(mapId: string): { map: CodeMap; changed: boolean } {
     ev(map, "ship", `"${n.title}" shipped in PR #${n.pr?.number}`, n.id);
   });
   return { map: saveMockMap(map), changed: true };
-}
-
-// ---------------------------------------------------------------------------
-// STUBS for the parts Sebastian owns. The real AI routes (analyze/expand/build)
-// call ONLY these, so swapping in github.ts / db.ts later is one import per route:
-//   stubParseRepoUrl -> github.parseRepoUrl     stubGetSnapshot -> github.getSnapshot
-//   stubGetFiles     -> github.getFiles         getMockMap/saveMockMap -> db.getMap/saveMap
-// Until then they serve the built-in demo repo and keep maps in memory.
-// ---------------------------------------------------------------------------
-
-export function stubParseRepoUrl(input: string): { owner: string; name: string } {
-  if (input.trim() === "demo") return { owner: DEMO_OWNER, name: DEMO_REPO };
-  const m = input.trim().match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/i);
-  if (!m) throw new Error("Enter a GitHub repo URL like https://github.com/owner/repo");
-  return { owner: m[1], name: m[2] };
-}
-
-export async function stubGetSnapshot(owner: string, name: string): Promise<Snapshot> {
-  if (owner === DEMO_OWNER && name === DEMO_REPO) return DEMO_SNAPSHOT;
-  throw new Error("Reading real GitHub repos isn't built yet (github.ts). Use the demo repo for now.");
-}
-
-export async function stubGetFiles(
-  owner: string,
-  name: string,
-  paths: string[],
-): Promise<{ path: string; content: string | null }[]> {
-  const snap = await stubGetSnapshot(owner, name);
-  return paths.map((p) => ({ path: p, content: snap.files.find((f) => f.path === p)?.content ?? null }));
 }

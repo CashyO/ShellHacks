@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
+import { getMap, saveMap } from "@/lib/db";
 import { generateJSON } from "@/lib/gemini";
-import { getMockMap, isMock, mockExpand, saveMockMap, stubGetSnapshot } from "@/lib/mock";
+import { describeError, getRequestToken, getTree } from "@/lib/github";
+import { isMock, mockExpand } from "@/lib/mock";
 import * as prompts from "@/lib/prompts";
 import { dropDuplicateTitles, ExpandJson, ExpandSchema, filterByTree, toNode } from "@/lib/schemas";
 
-// Owner (Josiah). SEAMS for Sebastian's files: getMockMap/saveMockMap -> db.getMap/saveMap,
-// stubGetSnapshot -> github.getSnapshot.
 const REAL = true;
 
 export async function POST(req: Request) {
@@ -20,20 +20,20 @@ export async function POST(req: Request) {
   }
 
   try {
-    const map = getMockMap(mapId);
+    const map = await getMap(mapId);
     if (!map) return NextResponse.json({ error: "Map not found" }, { status: 404 });
     const parent = map.nodes.find((n) => n.id === nodeId);
     if (!parent) return NextResponse.json({ error: "Node not found" }, { status: 404 });
 
-    const snapshot = await stubGetSnapshot(map.repo.owner, map.repo.name);
+    const tree = await getTree(map.repo.owner, map.repo.name, getRequestToken(req));
     const existingTitles = map.nodes.map((n) => n.title);
     const result = await generateJSON(
-      prompts.expand({ summary: map.summary, tree: snapshot.tree, parent, existingTitles }),
+      prompts.expand({ summary: map.summary, tree, parent, existingTitles }),
       ExpandJson,
       ExpandSchema,
     );
 
-    const ideas = dropDuplicateTitles(filterByTree(result.ideas, snapshot.tree), existingTitles).slice(0, 5);
+    const ideas = dropDuplicateTitles(filterByTree(result.ideas, tree), existingTitles).slice(0, 5);
     if (ideas.length === 0) {
       return NextResponse.json({ error: "No new ideas found for this node. Try another." }, { status: 502 });
     }
@@ -45,8 +45,9 @@ export async function POST(req: Request) {
       text: `Expanded "${parent.title}" into ${ideas.length} ideas`,
       nodeId: parent.id,
     });
-    return NextResponse.json({ map: saveMockMap(map) });
+    return NextResponse.json({ map: await saveMap(map) });
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+    const { status, message } = describeError(e);
+    return NextResponse.json({ error: message }, { status });
   }
 }
