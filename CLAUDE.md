@@ -1,8 +1,9 @@
 # Instructions for coding agents (and humans)
 
-This is **Offshoot**, a hackathon project with a hard MVP deadline of **Sat 11 PM**.
+This is **ProjectGraph**, a hackathon project with a hard MVP deadline of **Sat 11 PM**.
 
 ## Read first, every session
+0. `docs/index.md`: where every kind of information lives, including where to read library docs.
 1. `docs/ARCHITECTURE.md`: what we're building, stack, folder ownership, types, API contract.
 2. `docs/PLAN.md`: current phase and the task you're on.
 3. `docs/CONTEXT.md`: why things were decided, the pitch, the demo script. Read once per session.

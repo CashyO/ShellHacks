@@ -1,4 +1,4 @@
-# Offshoot — Build Plan
+# ProjectGraph — Build Plan
 
 Hackathon clock: started **Fri 11 PM** (H0). Plan written at **Sat 9 AM (H10)**.
 **MVP frozen Sat 11 PM (H24).** Then polish, sleep, demo, submit. Submission deadline **Sun 11 AM**. Submit by **10 AM**.
