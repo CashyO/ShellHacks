@@ -39,7 +39,8 @@ src/lib/types.ts              shared contract
 src/lib/schemas.ts            zod + Gemini response schemas
 src/lib/prompts.ts            prompt builders
 src/lib/gemini.ts             generateJSON() and AI cache
-src/lib/mock.ts               MOCK_MODE fixture and in-memory store
+src/lib/mock.ts               MOCK_MODE fixture, in-memory store, and STUBS for github.ts/db.ts (see comment block at the bottom)
+src/lib/demo-snapshot.ts      built-in stand-in for the chronos-scheduler demo repo
 src/lib/github.ts, db.ts      GitHub (Octokit) and MongoDB (planned; see PLAN.md)
 src/lib/api-client.ts         typed fetch wrappers used by all UI
 ```
