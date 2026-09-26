@@ -27,9 +27,11 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
     <div className="flex h-screen flex-col">
       <Header map={map} />
       <div className="flex min-h-0 flex-1">
-        <section className="flex-1 overflow-auto">
-          <Graph map={map} selectedId={selectedId} onSelect={setSelectedId} />
-          <div className="p-4">
+        <section className="relative min-w-0 flex-1">
+          <div className="absolute inset-0">
+            <Graph map={map} selectedId={selectedId} onSelect={setSelectedId} />
+          </div>
+          <div className="absolute bottom-3 left-3 rounded bg-white/80 px-2 py-1 dark:bg-black/60">
             <Legend />
           </div>
         </section>
