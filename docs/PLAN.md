@@ -50,8 +50,8 @@ P2 Panels
 - [ ] `ActivityFeed` renders `map.events` newest first
 
 P3 AI
-- [ ] `gemini.ts` `generateJSON()` with zod validation + 1 retry
-- [ ] `schemas.ts`: Analyze, Expand, Build, Sync schemas (zod + Gemini responseSchema)
+- [x] `gemini.ts` `generateJSON()` with zod validation + 1 retry
+- [x] `schemas.ts`: Analyze, Expand, Build, Sync schemas (zod + Gemini responseSchema)
 - [ ] `prompts.analyze` → test on the demo repo; iterate until ideas are **specific and cite files**
 - [ ] `/api/analyze` end to end (uses P4's `getSnapshot`; stub it with a local JSON snapshot until P4 is ready)
 - [ ] `prompts.expand` + `/api/expand`
