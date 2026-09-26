@@ -4,7 +4,7 @@ import { generateJSON } from "@/lib/gemini";
 import { compareCommits, describeError, getRequestToken, getTree } from "@/lib/github";
 import { isMock, mockSync } from "@/lib/mock";
 import * as prompts from "@/lib/prompts";
-import { filterByTree, SyncJson, SyncSchema, toNode } from "@/lib/schemas";
+import { dropDuplicateTitles, filterByTree, SyncJson, SyncSchema, toNode } from "@/lib/schemas";
 import type { IdeaNode, MapEvent } from "@/lib/types";
 
 const REAL = true;
@@ -67,6 +67,7 @@ export async function POST(req: Request) {
           commits: cmp.commits,
           patches,
           openNodes: open.map((n) => ({ id: n.id, title: n.title, files: n.files })),
+          justShipped: shippedNow.map((n) => ({ id: n.id, title: n.title })),
         }),
         SyncJson,
         SyncSchema,
@@ -85,7 +86,10 @@ export async function POST(req: Request) {
 
       let detectedNode: IdeaNode | undefined;
       if (result.detected) {
-        const [d] = filterByTree([result.detected], tree);
+        const [d] = dropDuplicateTitles(
+          filterByTree([result.detected], tree),
+          map.nodes.map((n) => n.title),
+        );
         if (d) {
           detectedNode = toNode(d, { parentId: null, origin: "detected", status: "shipped" });
           detectedNode.shippedCommit = cmp.headSha;
@@ -96,7 +100,10 @@ export async function POST(req: Request) {
 
       for (const s of result.sprouts.slice(0, 3)) {
         const parentId = s.parentId === "detected" ? detectedNode?.id : map.nodes.find((n) => n.id === s.parentId)?.id;
-        const [d] = filterByTree([s.idea], tree);
+        const [d] = dropDuplicateTitles(
+          filterByTree([s.idea], tree),
+          map.nodes.map((n) => n.title),
+        );
         if (!parentId || !d) continue;
         const child = toNode(d, { parentId, origin: "sync" });
         map.nodes.push(child);

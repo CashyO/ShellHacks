@@ -1,5 +1,4 @@
 import { Octokit } from "@octokit/rest";
-import { DEMO_OWNER, DEMO_REPO, DEMO_SNAPSHOT } from "./demo-snapshot";
 import type { Snapshot } from "./prompts";
 import type { Proposal } from "./types";
 
@@ -13,7 +12,11 @@ const octo = (token?: string) => new Octokit({ auth: token ?? getRequestToken(),
 
 export function parseRepoUrl(input: string): { owner: string; name: string } {
   const raw = input.trim();
-  if (raw === "demo") return { owner: DEMO_OWNER, name: DEMO_REPO };
+  if (raw === "demo") {
+    const [owner, name] = (process.env.DEMO_REPO ?? "").split("/");
+    if (!owner || !name) throw new GithubError(400, "DEMO_REPO is not set (expected owner/name in .env.local).");
+    return { owner, name };
+  }
   const m = raw.match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:\/.*)?$/i);
   if (!m) throw new GithubError(400, "Enter a GitHub repo URL like https://github.com/owner/repo");
   return { owner: m[1], name: m[2] };
@@ -76,7 +79,6 @@ async function readTree(owner: string, name: string, token?: string) {
 
 /** Lightweight: just the path list (no file contents). */
 export async function getTree(owner: string, name: string, token?: string): Promise<string[]> {
-  if (owner === DEMO_OWNER && name === DEMO_REPO) return DEMO_SNAPSHOT.tree;
   return (await readTree(owner, name, token)).entries.map((e) => e.path).sort();
 }
 
@@ -89,9 +91,6 @@ const score = (p: string) => {
 };
 
 export async function getSnapshot(owner: string, name: string, token?: string): Promise<Snapshot> {
-  // Temporary: the built-in demo stands in until the real demo repo exists.
-  if (owner === DEMO_OWNER && name === DEMO_REPO) return DEMO_SNAPSHOT;
-
   const { defaultBranch, headSha, entries } = await readTree(owner, name, token);
   const picked: TreeEntry[] = [];
   let bytes = 0;
@@ -124,9 +123,6 @@ export async function getFiles(
   token?: string,
   ref?: string,
 ): Promise<{ path: string; content: string | null }[]> {
-  if (owner === DEMO_OWNER && name === DEMO_REPO) {
-    return paths.map((p) => ({ path: p, content: DEMO_SNAPSHOT.files.find((f) => f.path === p)?.content ?? null }));
-  }
   const o = octo(token);
   return Promise.all(
     paths.map(async (path) => {
@@ -144,7 +140,6 @@ export async function getFiles(
 }
 
 export async function getRepoAccess(owner: string, name: string, token?: string): Promise<{ canWrite: boolean }> {
-  if (owner === DEMO_OWNER && name === DEMO_REPO) return { canWrite: false };
   const repo = await octo(token).rest.repos.get({ owner, repo: name });
   return { canWrite: !!repo.data.permissions?.push };
 }
@@ -225,7 +220,6 @@ export async function compareCommits(
   defaultBranch: string,
   token?: string,
 ): Promise<{ commits: { sha: string; message: string }[]; patches: { path: string; patch: string }[]; headSha: string }> {
-  if (owner === DEMO_OWNER && name === DEMO_REPO) return { commits: [], patches: [], headSha: baseSha };
   const o = octo(token);
   const cmp = await o.rest.repos.compareCommitsWithBasehead({ owner, repo: name, basehead: `${baseSha}...${defaultBranch}` });
   const commits = cmp.data.commits.map((c) => ({ sha: c.sha, message: c.commit.message }));
