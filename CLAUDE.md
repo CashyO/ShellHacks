@@ -21,3 +21,13 @@ This is **ProjectGraph**, a hackathon project with a hard MVP deadline of **Sat 
 - Before saying a task is done: `npm run build` passes, and you've described how to test it manually.
 - When a task is finished, tick its checkbox in `docs/PLAN.md`.
 - Out of scope (don't build): auth, chat UI, private repos, live keystroke watching, auto-merge. (GitHub OAuth is a deferred stretch item, PLAN.md Phase 5; do not build it early, but follow ARCHITECTURE §6 "Auth-ready design": every `github.ts` function takes an optional `token`.)
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

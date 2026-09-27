@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { buildNode, expandNode, openPr, setNodeStatus } from "@/lib/api-client";
 import type { CodeMap, IdeaNode, NodeStatus, NodeType } from "@/lib/types";
+import { expandLocalNode, isLocalMap } from "@/lib/local-client";
 import DiffView from "./DiffView";
 
 const TYPE_COLOR: Record<NodeType, string> = {
@@ -21,9 +22,58 @@ const STATUS_LABEL: Record<NodeStatus, string> = {
   rejected: "Rejected",
 };
 
+/** Legacy copy via a hidden textarea; works in some embedded pages where the Clipboard API is refused. */
+function execCopy(text: string): boolean {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    ta.remove();
+  }
+}
+
+/** Inside the VS Code extension, ask it to copy with VS Code's own clipboard; resolves true once it confirms. */
+function copyViaVsCode(text: string): Promise<boolean> {
+  if (window.parent === window) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.source !== window.parent || e.data?.type !== "projectgraph:copied") return;
+      window.removeEventListener("message", onMessage);
+      clearTimeout(timer);
+      resolve(true);
+    };
+    // No reply (e.g. Simple Browser or another embedder) means nobody copied it.
+    const timer = setTimeout(() => {
+      window.removeEventListener("message", onMessage);
+      resolve(false);
+    }, 800);
+    window.addEventListener("message", onMessage);
+    window.parent.postMessage({ type: "projectgraph:copy", text }, "*");
+  });
+}
+
+// The async Clipboard API can be refused (unfocused document, permission policy, embedded frames such as
+// VS Code webviews), so fall back instead of failing silently.
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return execCopy(text) || (await copyViaVsCode(text));
+  }
+}
+
 function copyPrompt(map: CodeMap, node: IdeaNode) {
+  const repo = isLocalMap(map) ? `this repo, ${map.repo.name}` : `the repo ${map.repo.owner}/${map.repo.name}`;
   const text = [
-    `In the repo ${map.repo.owner}/${map.repo.name} (${map.summary}), implement: ${node.title}.`,
+    `In ${repo} (${map.summary}), implement: ${node.title}.`,
     "",
     node.description,
     "",
@@ -32,7 +82,7 @@ function copyPrompt(map: CodeMap, node: IdeaNode) {
     "",
     "Keep the change small and focused, and match the existing code style.",
   ].join("\n");
-  return navigator.clipboard.writeText(text);
+  return copyText(text);
 }
 
 const btn =
@@ -57,10 +107,14 @@ export default function DetailPanel({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const node = map.nodes.find((n) => n.id === selectedId);
+  // Local maps come from the VS Code extension: no GitHub, so no Build/PR, and file chips open in the editor.
+  const local = isLocalMap(map);
+  const embedded = typeof window !== "undefined" && window.parent !== window;
+  const openInEditor = (path: string) => window.parent.postMessage({ type: "projectgraph:openFile", path }, "*");
 
   async function run(label: string, fn: () => Promise<CodeMap>) {
     setBusy(label);
@@ -84,9 +138,13 @@ export default function DetailPanel({
       <div className="space-y-3 p-4 text-sm">
         <div>
           <h2 className="text-base font-semibold">{map.repo.name}</h2>
-          <a className="text-xs text-blue-600 hover:underline" href={map.repo.url} target="_blank" rel="noreferrer">
-            {map.repo.owner}/{map.repo.name} ↗
-          </a>
+          {local ? (
+            <span className="text-xs text-neutral-500">Local repo · {map.repo.defaultBranch}</span>
+          ) : (
+            <a className="text-xs text-blue-600 hover:underline" href={map.repo.url} target="_blank" rel="noreferrer">
+              {map.repo.owner}/{map.repo.name} ↗
+            </a>
+          )}
         </div>
         <p>{map.summary}</p>
         <div className="flex flex-wrap gap-1">
@@ -135,12 +193,27 @@ export default function DetailPanel({
       </div>
 
       <div className="flex flex-wrap gap-1">
-        {node.files.map((f) => (
-          <code key={f} className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs dark:bg-neutral-800">
-            {f}
-          </code>
-        ))}
+        {node.files.map((f) =>
+          local && embedded ? (
+            <button
+              key={f}
+              onClick={() => openInEditor(f)}
+              title="Open in VS Code"
+              className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-blue-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-blue-400 dark:hover:bg-neutral-700"
+            >
+              {f}
+            </button>
+          ) : (
+            <code key={f} className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs dark:bg-neutral-800">
+              {f}
+            </code>
+          ),
+        )}
       </div>
+
+      {local && node.status === "suggested" && (
+        <p className="text-xs text-neutral-500">Local repo: build it in your editor. The map updates when you commit.</p>
+      )}
 
       {error && <p className="rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
 
@@ -178,7 +251,7 @@ export default function DetailPanel({
       )}
 
       <div className="flex flex-wrap gap-2 pt-1">
-        {node.status === "suggested" && !building && (
+        {node.status === "suggested" && !building && !local && (
           <>
             {showProposal ? (
               <>
@@ -197,7 +270,7 @@ export default function DetailPanel({
           </>
         )}
         {node.status !== "building" && (
-          <button className={secondary} disabled={!!busy} onClick={() => run("expand", () => expandNode(map._id, node.id))}>
+          <button className={secondary} disabled={!!busy} onClick={() => run("expand", () => (local ? expandLocalNode : expandNode)(map._id, node.id))}>
             {busy === "expand" ? (
               <>
                 <Spinner /> Expanding…
@@ -210,13 +283,13 @@ export default function DetailPanel({
         <button
           className={secondary}
           onClick={() =>
-            copyPrompt(map, node).then(() => {
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
+            copyPrompt(map, node).then((ok) => {
+              setCopied(ok ? "copied" : "failed");
+              setTimeout(() => setCopied("idle"), 1500);
             })
           }
         >
-          {copied ? "Copied!" : "Copy prompt"}
+          {copied === "copied" ? "Copied!" : copied === "failed" ? "Copy failed" : "Copy prompt"}
         </button>
         {node.status === "suggested" && !building && (
           <button className={`${secondary} text-neutral-500`} disabled={!!busy} onClick={() => run("reject", () => setNodeStatus(map._id, node.id, "rejected"))}>

@@ -1,0 +1,99 @@
+{
+  "name": "projectgraph",
+  "displayName": "ProjectGraph",
+  "description": "A living mind map of your local repo that grows with every commit and suggests ideas while you code.",
+  "version": "0.4.3",
+  "publisher": "projectgraph",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onUri",
+    "onView:projectgraph.map"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "projectgraph.open",
+        "title": "Open Map",
+        "category": "ProjectGraph"
+      },
+      {
+        "command": "projectgraph.showInSidebar",
+        "title": "Show Map in Sidebar",
+        "category": "ProjectGraph"
+      },
+      {
+        "command": "projectgraph.mapRepository",
+        "title": "Map This Repository",
+        "category": "ProjectGraph"
+      },
+      {
+        "command": "projectgraph.suggestNow",
+        "title": "Suggest Ideas From My Changes",
+        "category": "ProjectGraph"
+      },
+      {
+        "command": "projectgraph.openInBrowser",
+        "title": "Open Map in Browser",
+        "category": "ProjectGraph"
+      }
+    ],
+    "configuration": {
+      "title": "ProjectGraph",
+      "properties": {
+        "projectgraph.url": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "Where the ProjectGraph app is running."
+        },
+        "projectgraph.passiveIdeas": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let the agent watch what you do (current file, function, errors, uncommitted changes) and pitch ideas via Gemini when you pause."
+        },
+        "projectgraph.ideaDelaySeconds": {
+          "type": "number",
+          "default": 10,
+          "minimum": 5,
+          "description": "How long to wait after you stop typing or save before asking for ideas."
+        },
+        "projectgraph.minIdeaIntervalSeconds": {
+          "type": "number",
+          "default": 45,
+          "minimum": 15,
+          "description": "Minimum time between idea requests, to limit Gemini calls."
+        },
+        "projectgraph.notifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification when a new idea appears."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "projectgraph",
+          "title": "ProjectGraph",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "projectgraph": [
+        {
+          "type": "webview",
+          "id": "projectgraph.map",
+          "name": "Mind Map"
+        }
+      ]
+    }
+  }
+}
