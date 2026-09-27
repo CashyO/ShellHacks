@@ -8,7 +8,19 @@ export interface Snapshot {
   files: { path: string; content: string }[];
 }
 
+/** Matches the kind of doc a team writes down its own conventions in — respect these, don't just suggest more code. */
+export const isConventionDoc = (path: string) =>
+  /(^|\/)(architecture|contributing|design)(\.[a-z0-9]+)?$/i.test(path) ||
+  /(^|\/)adr(\.[a-z0-9]+)?$/i.test(path) ||
+  /(^|\/)(adr|architecture)\//i.test(path);
+
+export function renderConventions(docs: { path: string; content: string }[]): string {
+  if (docs.length === 0) return "";
+  return `\nPROJECT CONVENTIONS (written by the team — respect these. If an idea would conflict with one, either drop the idea or say so explicitly in its rationale, naming the doc):\n${docs.map((d) => `=== ${d.path} ===\n${d.content}`).join("\n\n")}\n`;
+}
+
 const RULES = `Rules for every idea:
+- If PROJECT CONVENTIONS are provided below, treat them as binding. Never suggest something they explicitly rule out.
 - The "rationale" MUST name a real file or function from the code provided.
 - Only reference files that appear in the FILE TREE. A new file is allowed only inside an existing folder.
 - Never suggest something the code already does.
@@ -24,17 +36,19 @@ const renderFiles = (files: Snapshot["files"]) =>
 const renderTree = (tree: string[]) => tree.join("\n");
 
 export function analyze(s: Snapshot): string {
+  const conventions = s.files.filter((f) => isConventionDoc(f.path));
+  const code = s.files.filter((f) => !isConventionDoc(f.path));
   return `You are a senior engineer reviewing a GitHub repository to suggest what to build next.
 
 Return a short summary of what the app is, its tech stack, and 8 to 12 specific, buildable ideas grounded in this code.
 
 ${RULES}
-
+${renderConventions(conventions)}
 FILE TREE:
 ${renderTree(s.tree)}
 
 CODE:
-${renderFiles(s.files)}`;
+${renderFiles(code)}`;
 }
 
 export function expand(args: {
@@ -42,8 +56,9 @@ export function expand(args: {
   tree: string[];
   parent: IdeaNode;
   existingTitles: string[];
+  conventions?: { path: string; content: string }[];
 }): string {
-  const { summary, tree, parent, existingTitles } = args;
+  const { summary, tree, parent, existingTitles, conventions = [] } = args;
   return `You are a senior engineer extending an idea map for a codebase.
 
 APP: ${summary}
@@ -58,7 +73,7 @@ Do NOT repeat or closely overlap any of these existing ideas:
 ${existingTitles.map((t) => `- ${t}`).join("\n")}
 
 ${RULES}
-
+${renderConventions(conventions)}
 FILE TREE:
 ${renderTree(tree)}`;
 }
@@ -67,8 +82,9 @@ export function build(args: {
   summary: string;
   node: IdeaNode;
   files: { path: string; content: string | null }[];
+  conventions?: { path: string; content: string }[];
 }): string {
-  const { summary, node, files } = args;
+  const { summary, node, files, conventions = [] } = args;
   const rendered = files
     .map((f) => (f.content === null ? `=== ${f.path} (NEW FILE, does not exist yet) ===` : `=== ${f.path} ===\n${f.content}`))
     .join("\n\n");
@@ -88,7 +104,7 @@ Rules:
 - Use the values you validated or transformed, not the original raw input, when you pass data onward.
 - Set isNew to true only for files that do not exist yet.
 - prTitle: a short conventional-commit style title. prBody: 2-4 sentences on what changed and why.
-
+${renderConventions(conventions)}
 CURRENT FILES:
 ${rendered}`;
 }

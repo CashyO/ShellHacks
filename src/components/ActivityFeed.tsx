@@ -10,6 +10,9 @@ const KIND: Record<MapEvent["kind"], { icon: string; color: string }> = {
   sprout: { icon: "✿", color: "text-green-600" },
   detect: { icon: "◆", color: "text-amber-600" },
   error: { icon: "!", color: "text-red-600" },
+  create: { icon: "✎", color: "text-neutral-500" },
+  reject: { icon: "✕", color: "text-neutral-400" },
+  link: { icon: "↝", color: "text-neutral-500" },
 };
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });

@@ -110,8 +110,11 @@ export interface IdeaNode extends IdeaDraft {
   id: string;                 // nanoid
   parentId: string | null;    // null = attached to the root (codebase) node
   status: NodeStatus;
-  origin: "analyze" | "expand" | "sync" | "detected";
+  origin: "analyze" | "expand" | "sync" | "detected" | "manual";
   createdAt: string;          // ISO
+  createdBy?: string;         // GitHub login, for manually-added ideas
+  rejectedBy?: string;        // GitHub login who rejected it, if signed in
+  rejectedNote?: string;      // why, for teammates who see it later
   proposal?: Proposal;        // set by /api/build
   pr?: { number: number; url: string; branch: string };
   shippedCommit?: string;     // sha
@@ -129,7 +132,7 @@ export interface Proposal {
 
 export interface MapEvent {
   at: string;
-  kind: "analyze" | "expand" | "build" | "pr" | "commit" | "ship" | "sprout" | "detect" | "error";
+  kind: "analyze" | "expand" | "build" | "pr" | "commit" | "ship" | "sprout" | "detect" | "error" | "create" | "reject" | "link";
   text: string;               // human-readable line for the activity feed
   nodeId?: string;
   sha?: string;
@@ -158,20 +161,31 @@ All routes: JSON in, JSON out. Errors return `{ error: string }` with a 4xx/5xx 
 |---|---|---|---|
 | `POST /api/analyze` | `{ repoUrl }` | `{ map: CodeMap }` | Snapshot repo → Gemini analyze → save new map with 8–12 nodes |
 | `GET /api/maps/[id]` | – | `{ map: CodeMap }` | Load map |
-| `PATCH /api/maps/[id]` | `{ nodeId, status }` | `{ map }` | Manual status change (e.g. reject) |
+| `PATCH /api/maps/[id]` | `{ nodeId, status?, note? }` | `{ map }` | `status` = manual status change; on `status: "rejected"`, `note` (optional) is recorded with the signed-in user's login as `rejectedBy`/`rejectedNote` and logged as a `reject` event. |
+| `POST /api/nodes` | `{ mapId, title, type, effort, description?, rationale?, files?, parentId? }` | `{ map }` | Manually add an idea (steer the map yourself, not just accept AI suggestions). `origin: "manual"`, `status: "suggested"`; `createdBy` set from the signed-in user if any. Logged as a `create` event. |
 | `POST /api/expand` | `{ mapId, nodeId }` | `{ map }` | Gemini generates 3–5 children for node |
 | `POST /api/build` | `{ mapId, nodeId }` | `{ map }` | Fetch node's files fresh → Gemini writes full new file contents → server builds diff → store `node.proposal` |
 | `POST /api/pr` | `{ mapId, nodeId }` | `{ map }` | Uses stored proposal → branch `projectgraph/<nodeId>` → commit files → open PR → `status = "pr_open"` |
 | `POST /api/sync` | `{ mapId }` | `{ map, changed: boolean }` | Compare `lastSyncedSha...defaultBranch`. If new commits: mark shipped, detect new work, sprout ideas |
 
-### Auth-ready design (build later, design now)
+### Manual planning (built)
 
-The MVP uses one service token, so it can read any public repo but **write only where that token's account has push access** (the demo repo). We do not build login for the MVP, but we shape the code so "Sign in with GitHub" is a small swap later:
+Not every idea has to come from Gemini. `IdeaNode` carries `createdBy?` / `rejectedBy?` / `rejectedNote?` for who
+did what. `DetailPanel.tsx` has the "＋ Add idea" form (creates an `origin: "manual"` node via `POST /api/nodes`).
+Every node's activity-feed events (`create`, `reject`, plus the existing kinds) are also shown filtered to that
+node as a small "History" section in the panel — the provenance of a decision without scrolling the whole feed.
+(A "shares files" hover effect and a manual `dependsOn` ordering feature were both tried and removed — the first
+for being distracting, the second because multi-select turned out to be more useful for building several ideas
+at once than for expressing "ships before" ordering. Don't reintroduce either without a specific reason.)
+
+### GitHub sign-in and token handling (built)
+
+Without sign-in, the app uses one service token (`GITHUB_TOKEN`): it can read any public repo but write only where that account has push access. With GitHub sign-in (below), each user's own token is used instead, so PRs open as them, on their repos, including private ones. The rules that keep both working:
 
 - **Every function in `github.ts` takes a `token` argument** (`getSnapshot(owner, name, token?)`, `createPr(..., token?)`, etc.) and defaults to `process.env.GITHUB_TOKEN`. Never read the env var anywhere else.
-- **Routes obtain the token through one helper** (for example `getRequestToken(req)` in `github.ts`). In the MVP it returns the env token. With OAuth it would return the user's token from a signed httpOnly cookie. Routes never touch tokens directly.
+- **Routes obtain the token through one helper** (for example `getRequestToken(req)` in `github.ts`). It returns the signed-in user's token from the encrypted cookie, else the env token. Routes never touch tokens directly.
 - **Write-permission check:** `github.getRepoAccess(owner, name, token?)` returns `{ canWrite: boolean }` (from the repo's `permissions.push`). If `canWrite` is false, the UI shows the diff and "Copy prompt" and disables "Open PR" with the note "Preview only: PRs need write access". This is the same graceful fallback as PLAN.md's fallback table.
-- **Later (stretch):** GitHub OAuth (`/api/auth/login`, `/api/auth/callback`, token in a signed httpOnly cookie, and an owner field on maps). See PLAN.md Phase 5. Adding it requires a §2 dependency decision first.
+- **Built: GitHub OAuth.** `GET /api/auth/login` sends the user to GitHub (scope `repo`); `GET /api/auth/callback` exchanges the code and stores the token in an AES-GCM encrypted, httpOnly cookie (`src/lib/session.ts`, key from `SESSION_SECRET`). `getRequestToken(req)` returns the user's token, else `GITHUB_TOKEN`. `GET /api/auth/me` (never returns the token), `POST /api/auth/logout`, and `GET /api/repos` (the signed-in user's repos for the picker) support the landing page. Uses plain `fetch`, no new dependency. Map ids are UUIDs, so a map link is the only thing protecting a private repo's map.
 
 ### Route internals
 
@@ -231,6 +245,16 @@ export async function generateJSON<T>(prompt: string, responseSchema: object, zo
 
 **AI cache** (`ai_cache` collection, `{ _id: hash, response, createdAt }`): the same prompt returns the same answer instantly. It makes the demo fast and deterministic. Set `AI_CACHE=off` to disable it while tuning prompts.
 
+**Convention grounding (built):** if the repo has an `ARCHITECTURE.md`, `CONTRIBUTING.md`, `DESIGN.md`, or an `ADR`-style file/folder, its content is pulled out as a separate `PROJECT CONVENTIONS` block in the analyze, expand, and build prompts (`prompts.isConventionDoc` / `renderConventions`) — treated as binding, so an idea that conflicts with a team's own documented rules gets dropped or explicitly flagged instead of silently suggested anyway. `analyze` gets these for free (the file-picker in `github.ts` scores them just under README). `expand` looks them up from the already-fetched tree. `build` speculatively fetches a short list of common filenames in parallel with everything else, so it costs no extra round trip when they don't exist.
+
+## 7a. Decisions log (built)
+
+`DecisionsLog.tsx`, opened from a "Decisions (n)" button in the header, lists every **rejected** idea with who rejected it and why (`rejectedBy` / `rejectedNote`, set by `PATCH /api/maps/[id]`). Rejected nodes are hidden from the graph itself (§8), so this is the only place that record is visible — the point being a durable, searchable "what we already considered and said no to," which a chat session has no equivalent of.
+
+## 7b. Build multiple ideas at once (built)
+
+Ctrl/Cmd-click toggles a node into a multi-selection (a dashed sky-blue ring, distinct from the solid selection ring). With 2+ selected, `BuildSelectedPanel.tsx` lets you build all of them without clicking Build one at a time. It calls `POST /api/build` **sequentially, one node at a time, never in parallel** — `/api/build` re-saves the whole map document on completion, so two concurrent builds on the same map would silently overwrite each other's proposal. Each row shows pending/building/done/error live; a node that isn't `status: "suggested"` (already built, PR'd, or shipped) is listed as skipped rather than attempted.
+
 ## 8. Frontend behavior
 
 - `/map/[id]` loads the map, renders `Graph` (left, flexible width) and `DetailPanel` + `ActivityFeed` (right, 380px).
@@ -245,7 +269,7 @@ export async function generateJSON<T>(prompt: string, responseSchema: object, zo
     - shipped = green `#1C9A50` with ✓
     - rejected = hidden
   - Size = effort (S 6, M 8, L 10 at graph scale).
-  - The root shows a progress ring: shipped / total.
+  - The root is a plain circle labeled with the repo name (no progress ring or percentage).
 - **DetailPanel actions by status:**
   - suggested: Build it · Expand · Copy prompt
   - building: spinner
@@ -262,7 +286,11 @@ GEMINI_API_KEY=
 GEMINI_MODEL=            # current Flash model id from AI Studio
 GITHUB_TOKEN=            # classic PAT, `repo` scope; must have write access to the demo repo
 MONGODB_URI=
-MOCK_MODE=false          # true = API routes return src/lib/mock.ts, no keys needed
+MOCK_MODE=false          # true = API routes return src/lib/mock.ts, no keys needed. MUST be false in production (else every repo shows the sample demo)
+GITHUB_CLIENT_ID=        # OAuth App (github.com/settings/developers); callback = <APP_URL>/api/auth/callback
+GITHUB_CLIENT_SECRET=
+SESSION_SECRET=          # random 32+ chars
+APP_URL=                 # optional public URL
 AI_CACHE=on
 ```
 
@@ -283,6 +311,6 @@ A small separate repo we control (e.g. `chronos-scheduler`, ~10 files, a simple 
 
 ## 12. Out of scope (do not build)
 
-For the MVP: login/accounts, private repos, live keystroke watching, auto-merging PRs, chat UI, multi-user presence, repos bigger than ~40 relevant files.
+Live keystroke watching, auto-merging PRs, chat UI, multi-user presence, repos bigger than ~40 relevant files.
 
-**Deferred, not rejected:** GitHub OAuth login is the first stretch item after the MVP passes its run-through (PLAN.md Phase 5). It also unlocks private repos and PRs on the user's own repos. Build it only then, but keep the `token` parameter design in §6 from day one.
+**Sign-in is built** (see §6). Still out of scope: multi-user accounts/teams, per-map access control beyond unguessable ids, and GitHub Apps.

@@ -103,3 +103,6 @@ export function toNode(
     createdAt: new Date().toISOString(),
   };
 }
+
+/** Unguessable id for a map (the link is the only thing protecting a private repo's map). */
+export const newMapId = () => randomUUID();

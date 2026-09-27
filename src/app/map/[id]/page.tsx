@@ -3,6 +3,8 @@
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import ActivityFeed from "@/components/ActivityFeed";
 import AgentPulse, { type AgentState } from "@/components/AgentPulse";
+import BuildSelectedPanel from "@/components/BuildSelectedPanel";
+import DecisionsLog from "@/components/DecisionsLog";
 import DetailPanel from "@/components/DetailPanel";
 import Graph from "@/components/Graph";
 import Header from "@/components/Header";
@@ -35,10 +37,19 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
   const [agent, setAgent] = useState<AgentState | null>(null); // set only when embedded by the VS Code extension
   const [narrow, setNarrow] = useState(false); // docked beside code: details slide over the map
   const [drawer, setDrawer] = useState(false);
+  const [showDecisions, setShowDecisions] = useState(false);
+  const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
   const select = (nodeId: string) => {
     setSelectedId(nodeId);
     if (nodeId !== "root") setDrawer(true);
+    else setMultiSelected(new Set()); // clicking the background/root clears a multi-selection too
   };
+  const toggleMulti = (nodeId: string) =>
+    setMultiSelected((prev) => {
+      const next = new Set(prev);
+      next.has(nodeId) ? next.delete(nodeId) : next.add(nodeId);
+      return next;
+    });
 
   useEffect(() => {
     const update = () => setNarrow(window.innerWidth < 900);
@@ -46,6 +57,8 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
+
+  useEffect(() => setMultiSelected(new Set()), [id]);
 
   useEffect(() => {
     getMap(id)
@@ -122,14 +135,29 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
 
   return (
     <div className="flex h-screen flex-col">
-      <Header map={map} syncedAt={syncedAt} />
+      <Header map={map} syncedAt={syncedAt} onOpenDecisions={() => setShowDecisions(true)} />
+      {showDecisions && (
+        <DecisionsLog
+          map={map}
+          onSelect={(nodeId) => select(nodeId)}
+          onClose={() => setShowDecisions(false)}
+        />
+      )}
       <div className="relative flex min-h-0 flex-1">
         <section className="relative min-w-0 flex-1">
           <div className="absolute inset-0">
-            <Graph map={shown} selectedId={selectedId} onSelect={select} focusFile={agent?.focus?.file} />
+            <Graph
+              map={shown}
+              selectedId={selectedId}
+              onSelect={select}
+              focusFile={agent?.focus?.file}
+              multiSelected={multiSelected}
+              onToggleMultiSelect={toggleMulti}
+            />
           </div>
-          <div className="absolute bottom-3 left-3 rounded bg-white/80 px-2 py-1 dark:bg-black/60">
+          <div className="absolute bottom-3 left-3 flex items-center gap-3 rounded bg-white/80 px-2 py-1 dark:bg-black/60">
             <Legend />
+            <span className="text-xs text-neutral-400">Ctrl/⌘-click to select multiple, then build them together</span>
           </div>
           <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-3">
             <div className="flex w-full max-w-[560px] justify-center">
@@ -140,6 +168,14 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
             <div className="pointer-events-none absolute bottom-3 right-3 z-10">
               <AgentPulse agent={agent} map={map} onSelect={select} onMapChange={setMap} />
             </div>
+          )}
+          {multiSelected.size >= 2 && (
+            <BuildSelectedPanel
+              map={map}
+              selected={[...multiSelected].map((mid) => map.nodes.find((n) => n.id === mid)).filter((n) => !!n)}
+              onMapChange={setMap}
+              onDone={() => setMultiSelected(new Set())}
+            />
           )}
           {narrow && !drawer && (
             <button

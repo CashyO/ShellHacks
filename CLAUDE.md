@@ -20,7 +20,7 @@ This is **ProjectGraph**, a hackathon project with a hard MVP deadline of **Sat 
 - All AI responses go through `generateJSON()` in `src/lib/gemini.ts` with a zod schema. Never `JSON.parse` model output anywhere else.
 - Before saying a task is done: `npm run build` passes, and you've described how to test it manually.
 - When a task is finished, tick its checkbox in `docs/PLAN.md`.
-- Out of scope (don't build): auth, chat UI, private repos, live keystroke watching, auto-merge. (GitHub OAuth is a deferred stretch item, PLAN.md Phase 5; do not build it early, but follow ARCHITECTURE §6 "Auth-ready design": every `github.ts` function takes an optional `token`.)
+- Out of scope (don't build): chat UI, live keystroke watching, auto-merge, multi-user accounts/teams. GitHub sign-in (OAuth, private repos) is built: see ARCHITECTURE §6. Every `github.ts` function takes an optional `token`; routes get it only via `getRequestToken(req)`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

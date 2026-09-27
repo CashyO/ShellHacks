@@ -1,14 +1,58 @@
 import { Octokit } from "@octokit/rest";
-import type { Snapshot } from "./prompts";
+import type { RepoSummary } from "./api-client";
+import { isConventionDoc, type Snapshot } from "./prompts";
+import { getSession } from "./session";
 import type { Proposal } from "./types";
 
 // Auth-ready (ARCHITECTURE §6): every function takes an optional token and falls back to GITHUB_TOKEN.
 // Routes get the token only through getRequestToken(); with OAuth later, only this helper changes.
-export function getRequestToken(_req?: Request): string | undefined {
-  return process.env.GITHUB_TOKEN || undefined;
+// The signed-in user's token (encrypted cookie) wins; otherwise the shared service token, if any.
+export function getRequestToken(req?: Request): string | undefined {
+  const session = req ? getSession(req) : null;
+  return session?.token ?? (process.env.GITHUB_TOKEN || undefined);
 }
 
-const octo = (token?: string) => new Octokit({ auth: token ?? getRequestToken(), userAgent: "projectgraph" });
+export async function listUserRepos(token: string): Promise<RepoSummary[]> {
+  const res = await octo(token).rest.repos.listForAuthenticatedUser({
+    sort: "pushed",
+    per_page: 100,
+    affiliation: "owner,collaborator,organization_member",
+  });
+  return res.data
+    .filter((r) => !r.archived)
+    .map((r) => ({
+      fullName: r.full_name,
+      name: r.name,
+      owner: r.owner.login,
+      private: r.private,
+      description: r.description,
+      language: r.language ?? null,
+      pushedAt: r.pushed_at ?? null,
+      canWrite: !!r.permissions?.push,
+    }));
+}
+
+// If the shared GITHUB_TOKEN is bad (expired, mistyped), GitHub answers 401 even for public data. Retry those
+// requests without credentials so public repos keep working. A signed-in user's token is never retried.
+const octo = (token?: string) => {
+  const auth = token ?? getRequestToken();
+  const isServiceToken = !!auth && auth === process.env.GITHUB_TOKEN;
+  return new Octokit({
+    auth,
+    userAgent: "projectgraph",
+    request: isServiceToken
+      ? {
+          fetch: async (url: string | URL | Request, init?: RequestInit) => {
+            const res = await fetch(url, init);
+            if (res.status !== 401) return res;
+            const headers = new Headers(init?.headers);
+            headers.delete("authorization");
+            return fetch(url, { ...init, headers });
+          },
+        }
+      : undefined,
+  });
+};
 
 export function parseRepoUrl(input: string): { owner: string; name: string } {
   const raw = input.trim();
@@ -41,7 +85,7 @@ export function describeError(e: unknown): { status: number; message: string } {
     if (remaining === "0") return { status: 429, message: "GitHub rate limit reached. Add a GITHUB_TOKEN or wait a few minutes." };
     return { status: 403, message: "GitHub refused the request (permissions). The token may lack write access to this repo." };
   }
-  if (err.status === 401) return { status: 401, message: "GitHub token is invalid or expired." };
+  if (err.status === 401) return { status: 401, message: "Your GitHub connection expired. Sign out and connect GitHub again." };
   return { status: err.status && err.status >= 400 ? err.status : 500, message: err.message ?? "Unexpected error" };
 }
 
@@ -85,6 +129,7 @@ export async function getTree(owner: string, name: string, token?: string): Prom
 const score = (p: string) => {
   const depth = p.split("/").length;
   if (/^readme(\.\w+)?$/i.test(p)) return 0;
+  if (isConventionDoc(p)) return 0.5 + depth / 100; // ARCHITECTURE.md etc: nearly as important as README
   if (MANIFEST.test(p)) return 1 + depth / 100;
   if (SOURCE.test(p)) return 2 + depth;
   return 20 + depth;
@@ -137,6 +182,31 @@ export async function getFiles(
       }
     }),
   );
+}
+
+const trimDoc = (f: { path: string; content: string | null }) => ({ path: f.path, content: (f.content ?? "").slice(0, 6000) });
+
+/** Best-effort, no tree lookup needed (safe to run in parallel with anything): tries common doc filenames directly. */
+const COMMON_CONVENTION_PATHS = ["ARCHITECTURE.md", "docs/ARCHITECTURE.md", "CONTRIBUTING.md", "docs/CONTRIBUTING.md", "DESIGN.md", "docs/DESIGN.md", "ADR.md"];
+export async function guessConventionDocs(owner: string, name: string, token?: string): Promise<{ path: string; content: string }[]> {
+  try {
+    const files = await getFiles(owner, name, COMMON_CONVENTION_PATHS, token);
+    return files.filter((f) => f.content !== null).map(trimDoc);
+  } catch {
+    return []; // optional context; never block a build over it
+  }
+}
+
+/** From an already-fetched tree: catches convention docs under any path, not just the common names. */
+export async function getConventionDocs(owner: string, name: string, tree: string[], token?: string): Promise<{ path: string; content: string }[]> {
+  const paths = tree.filter(isConventionDoc).slice(0, 3);
+  if (paths.length === 0) return [];
+  try {
+    const files = await getFiles(owner, name, paths, token);
+    return files.filter((f) => f.content !== null).map(trimDoc);
+  } catch {
+    return [];
+  }
 }
 
 export async function getRepoAccess(owner: string, name: string, token?: string): Promise<{ canWrite: boolean }> {

@@ -8,6 +8,7 @@ import { dropDuplicateTitles, filterByTree, SyncJson, SyncSchema, toNode } from 
 import type { IdeaNode, MapEvent } from "@/lib/types";
 
 const REAL = true;
+export const maxDuration = 60; // Vercel: allow long AI calls
 const MAX_PATCH_CHARS = 30_000;
 
 const firstLine = (s: string) => s.split("\n")[0];
