@@ -257,16 +257,12 @@ export default function GraphCanvas({
         onEngineStop={() => {
           const fg = fgRef.current;
           if (!fg) return;
+          // Fit once, on the first load, only. Re-fitting on every settle (e.g. after Expand) snaps the
+          // whole graph back to frame everything, which reads as "it grew, then shrank back into itself."
           if (!fitted.current) {
             fitted.current = true;
             fg.zoomToFit(400, 70);
-            return;
           }
-          // Refit only if the settled graph spills off-screen (sprouts, replay), so manual zoom sticks otherwise.
-          const bb = fg.getGraphBbox();
-          const tl = fg.graph2ScreenCoords(bb.x[0], bb.y[0]);
-          const br = fg.graph2ScreenCoords(bb.x[1], bb.y[1]);
-          if (tl.x < 0 || tl.y < 0 || br.x > size.w || br.y > size.h) fg.zoomToFit(400, 70);
         }}
         linkColor={() => muted}
         onNodeHover={(node) => {
