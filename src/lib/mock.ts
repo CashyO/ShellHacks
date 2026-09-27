@@ -78,7 +78,7 @@ export function mockAnalyze(): CodeMap {
 export function mockPatch(
   mapId: string,
   nodeId: string,
-  patch: { status?: NodeStatus; note?: string; dependsOn?: string[] },
+  patch: { status?: NodeStatus; note?: string },
 ): CodeMap {
   const { map, n } = need(mapId, nodeId);
   if (patch.status) {
@@ -87,11 +87,6 @@ export function mockPatch(
       n.rejectedNote = patch.note?.trim() || undefined;
       ev(map, "reject", `Rejected "${n.title}"${n.rejectedNote ? `: ${n.rejectedNote}` : ""}`, n.id);
     }
-  }
-  if (patch.dependsOn) {
-    const valid = new Set(map.nodes.map((x) => x.id));
-    n.dependsOn = [...new Set(patch.dependsOn)].filter((id) => id !== n.id && valid.has(id));
-    ev(map, "link", `"${n.title}" now depends on ${n.dependsOn.length} idea${n.dependsOn.length === 1 ? "" : "s"}`, n.id);
   }
   return saveMockMap(map);
 }

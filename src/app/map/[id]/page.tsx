@@ -3,7 +3,7 @@
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import ActivityFeed from "@/components/ActivityFeed";
 import AgentPulse, { type AgentState } from "@/components/AgentPulse";
-import CombinePanel from "@/components/CombinePanel";
+import BuildSelectedPanel from "@/components/BuildSelectedPanel";
 import DecisionsLog from "@/components/DecisionsLog";
 import DetailPanel from "@/components/DetailPanel";
 import Graph from "@/components/Graph";
@@ -157,7 +157,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
           </div>
           <div className="absolute bottom-3 left-3 flex items-center gap-3 rounded bg-white/80 px-2 py-1 dark:bg-black/60">
             <Legend />
-            <span className="text-xs text-neutral-400">Ctrl/⌘-click to combine ideas</span>
+            <span className="text-xs text-neutral-400">Ctrl/⌘-click to select multiple, then build them together</span>
           </div>
           <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-3">
             <div className="flex w-full max-w-[560px] justify-center">
@@ -170,11 +170,10 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
             </div>
           )}
           {multiSelected.size >= 2 && (
-            <CombinePanel
+            <BuildSelectedPanel
               map={map}
               selected={[...multiSelected].map((mid) => map.nodes.find((n) => n.id === mid)).filter((n) => !!n)}
               onMapChange={setMap}
-              onSelect={select}
               onDone={() => setMultiSelected(new Set())}
             />
           )}

@@ -22,17 +22,16 @@ interface PatchBody {
   nodeId: string;
   status?: NodeStatus;
   note?: string;           // rejection reason, shown in the activity feed
-  dependsOn?: string[];    // replaces the node's full dependency list
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
   const { id } = await params;
   const body = (await req.json()) as PatchBody;
-  const { nodeId, status, note, dependsOn } = body;
+  const { nodeId, status, note } = body;
 
   if (isMock() || !REAL) {
     try {
-      return NextResponse.json({ map: mockPatch(id, nodeId, { status, note, dependsOn }) });
+      return NextResponse.json({ map: mockPatch(id, nodeId, { status, note }) });
     } catch (e) {
       return NextResponse.json({ error: (e as Error).message }, { status: 404 });
     }
@@ -58,12 +57,6 @@ export async function PATCH(req: Request, { params }: Ctx) {
           nodeId: node.id,
         });
       }
-    }
-
-    if (dependsOn) {
-      const valid = new Set(map.nodes.map((n) => n.id));
-      node.dependsOn = [...new Set(dependsOn)].filter((depId) => depId !== node.id && valid.has(depId));
-      map.events.push({ at: now, kind: "link", text: `"${node.title}" now depends on ${node.dependsOn.length} idea${node.dependsOn.length === 1 ? "" : "s"}`, nodeId: node.id });
     }
 
     return NextResponse.json({ map: await saveMap(map) });

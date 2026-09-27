@@ -19,7 +19,6 @@ export interface IdeaNode extends IdeaDraft {
   origin: "analyze" | "expand" | "sync" | "detected" | "manual";
   createdAt: string;          // ISO
   createdBy?: string;         // GitHub login, for manually-added ideas
-  dependsOn?: string[];       // ids of other nodes that should ship first (manual planning, not enforced)
   rejectedBy?: string;        // GitHub login who rejected it, if signed in
   rejectedNote?: string;      // why, for teammates who see it later in the activity feed
   proposal?: Proposal;        // set by /api/build

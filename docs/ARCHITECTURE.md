@@ -113,7 +113,6 @@ export interface IdeaNode extends IdeaDraft {
   origin: "analyze" | "expand" | "sync" | "detected" | "manual";
   createdAt: string;          // ISO
   createdBy?: string;         // GitHub login, for manually-added ideas
-  dependsOn?: string[];       // ids of other nodes that should ship first (advisory, not enforced)
   rejectedBy?: string;        // GitHub login who rejected it, if signed in
   rejectedNote?: string;      // why, for teammates who see it later
   proposal?: Proposal;        // set by /api/build
@@ -162,7 +161,7 @@ All routes: JSON in, JSON out. Errors return `{ error: string }` with a 4xx/5xx 
 |---|---|---|---|
 | `POST /api/analyze` | `{ repoUrl }` | `{ map: CodeMap }` | Snapshot repo → Gemini analyze → save new map with 8–12 nodes |
 | `GET /api/maps/[id]` | – | `{ map: CodeMap }` | Load map |
-| `PATCH /api/maps/[id]` | `{ nodeId, status?, note?, dependsOn? }` | `{ map }` | `status` = manual status change; on `status: "rejected"`, `note` (optional) is recorded with the signed-in user's login as `rejectedBy`/`rejectedNote` and logged as a `reject` event. `dependsOn` (optional) replaces the node's full dependency list (ids of other nodes it should ship after), logged as a `link` event. Either or both may be sent in one call. |
+| `PATCH /api/maps/[id]` | `{ nodeId, status?, note? }` | `{ map }` | `status` = manual status change; on `status: "rejected"`, `note` (optional) is recorded with the signed-in user's login as `rejectedBy`/`rejectedNote` and logged as a `reject` event. |
 | `POST /api/nodes` | `{ mapId, title, type, effort, description?, rationale?, files?, parentId? }` | `{ map }` | Manually add an idea (steer the map yourself, not just accept AI suggestions). `origin: "manual"`, `status: "suggested"`; `createdBy` set from the signed-in user if any. Logged as a `create` event. |
 | `POST /api/expand` | `{ mapId, nodeId }` | `{ map }` | Gemini generates 3–5 children for node |
 | `POST /api/build` | `{ mapId, nodeId }` | `{ map }` | Fetch node's files fresh → Gemini writes full new file contents → server builds diff → store `node.proposal` |
@@ -171,15 +170,13 @@ All routes: JSON in, JSON out. Errors return `{ error: string }` with a 4xx/5xx 
 
 ### Manual planning (built)
 
-Not every idea has to come from Gemini, and not every ordering decision should wait for it to notice a relationship.
-`IdeaNode` carries `dependsOn?: string[]` (ids of nodes that should ship first — advisory, not enforced) and
-`createdBy?` / `rejectedBy?` / `rejectedNote?` for who did what. The graph (`GraphCanvas.tsx`) draws dependency
-edges as a thin dashed amber line with a small arrowhead pointing at the prerequisite, separate from the solid
-parent/child tree links — static, no hover animation (a "shares files" hover effect was removed for being
-distracting; don't reintroduce that pattern here). `DetailPanel.tsx` has the "＋ Add idea" form and the "Depends
-on" add/remove UI. Every node's activity-feed events (`create`, `reject`, `link`, plus the existing kinds) are
-also shown filtered to that node as a small "History" section in the panel — the provenance of a decision without
-scrolling the whole feed.
+Not every idea has to come from Gemini. `IdeaNode` carries `createdBy?` / `rejectedBy?` / `rejectedNote?` for who
+did what. `DetailPanel.tsx` has the "＋ Add idea" form (creates an `origin: "manual"` node via `POST /api/nodes`).
+Every node's activity-feed events (`create`, `reject`, plus the existing kinds) are also shown filtered to that
+node as a small "History" section in the panel — the provenance of a decision without scrolling the whole feed.
+(A "shares files" hover effect and a manual `dependsOn` ordering feature were both tried and removed — the first
+for being distracting, the second because multi-select turned out to be more useful for building several ideas
+at once than for expressing "ships before" ordering. Don't reintroduce either without a specific reason.)
 
 ### GitHub sign-in and token handling (built)
 
@@ -254,9 +251,9 @@ export async function generateJSON<T>(prompt: string, responseSchema: object, zo
 
 `DecisionsLog.tsx`, opened from a "Decisions (n)" button in the header, lists every **rejected** idea with who rejected it and why (`rejectedBy` / `rejectedNote`, set by `PATCH /api/maps/[id]`). Rejected nodes are hidden from the graph itself (§8), so this is the only place that record is visible — the point being a durable, searchable "what we already considered and said no to," which a chat session has no equivalent of.
 
-## 7b. Combine ideas (built)
+## 7b. Build multiple ideas at once (built)
 
-Ctrl/Cmd-click toggles a node into a multi-selection (a dashed sky-blue ring, distinct from the solid selection ring and the amber dependency edges). With 2+ selected, `CombinePanel.tsx` shows a deterministic merge (concatenated description/rationale, union of files, worst-case effort, majority type — no AI call, since this is a "steer it yourself" tool) as an editable starting point. Confirming calls `POST /api/nodes` for the combined node (`origin: "manual"`) then `PATCH /api/maps/[id]` on each source node (`status: "rejected"`, `rejectedNote: 'Combined into "<title>"'`) — no new backend route; it composes the two that already exist. The originals aren't deleted: they show up in the Decisions log explaining what they became.
+Ctrl/Cmd-click toggles a node into a multi-selection (a dashed sky-blue ring, distinct from the solid selection ring). With 2+ selected, `BuildSelectedPanel.tsx` lets you build all of them without clicking Build one at a time. It calls `POST /api/build` **sequentially, one node at a time, never in parallel** — `/api/build` re-saves the whole map document on completion, so two concurrent builds on the same map would silently overwrite each other's proposal. Each row shows pending/building/done/error live; a node that isn't `status: "suggested"` (already built, PR'd, or shipped) is listed as skipped rather than attempted.
 
 ## 8. Frontend behavior
 

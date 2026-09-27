@@ -4,8 +4,7 @@ import type { CodeMap, IdeaNode } from "@/lib/types";
 
 const fmt = (iso: string) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
-function Row({ node, map, onSelect }: { node: IdeaNode; map: CodeMap; onSelect: (id: string) => void }) {
-  const deps = (node.dependsOn ?? []).map((id) => map.nodes.find((n) => n.id === id)?.title).filter(Boolean);
+function Row({ node, onSelect }: { node: IdeaNode; onSelect: (id: string) => void }) {
   return (
     <li className="space-y-1 border-b border-neutral-100 py-3 last:border-b-0 dark:border-neutral-900">
       <div className="flex items-baseline justify-between gap-2">
@@ -18,7 +17,6 @@ function Row({ node, map, onSelect }: { node: IdeaNode; map: CodeMap; onSelect: 
         Rejected{node.rejectedBy ? ` by ${node.rejectedBy}` : ""}
         {node.rejectedNote ? `: ${node.rejectedNote}` : " — no reason given"}
       </p>
-      {deps.length > 0 && <p className="text-xs text-neutral-400">Depended on: {deps.join(", ")}</p>}
     </li>
   );
 }
@@ -64,7 +62,7 @@ export default function DecisionsLog({
           ) : (
             <ul>
               {rejected.map((n) => (
-                <Row key={n.id} node={n} map={map} onSelect={() => { onSelect(n.id); onClose(); }} />
+                <Row key={n.id} node={n} onSelect={() => { onSelect(n.id); onClose(); }} />
               ))}
             </ul>
           )}

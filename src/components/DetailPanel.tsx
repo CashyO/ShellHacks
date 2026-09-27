@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { buildNode, createNode, expandNode, openPr, setDependsOn, setNodeStatus, type NewNodeInput } from "@/lib/api-client";
+import { buildNode, createNode, expandNode, openPr, setNodeStatus, type NewNodeInput } from "@/lib/api-client";
 import type { CodeMap, Effort, IdeaNode, NodeStatus, NodeType } from "@/lib/types";
 import { expandLocalNode, isLocalMap } from "@/lib/local-client";
 import DiffView from "./DiffView";
@@ -179,7 +179,6 @@ export default function DetailPanel({
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [showNewIdea, setShowNewIdea] = useState(false);
-  const [addingDep, setAddingDep] = useState("");
 
   const node = map.nodes.find((n) => n.id === selectedId);
   // Local maps come from the VS Code extension: no GitHub, so no Build/PR, and file chips open in the editor.
@@ -344,53 +343,6 @@ export default function DetailPanel({
           Rejected{node.rejectedBy ? ` by ${node.rejectedBy}` : ""}{node.rejectedNote ? `: ${node.rejectedNote}` : ""}
         </p>
       )}
-
-      {/* Manual dependency planning: order ideas without waiting on Gemini to notice the relationship. */}
-      <div className="space-y-1.5">
-        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Depends on</div>
-        {node.dependsOn && node.dependsOn.length > 0 ? (
-          <ul className="space-y-1">
-            {node.dependsOn.map((depId) => {
-              const dep = map.nodes.find((n) => n.id === depId);
-              return (
-                <li key={depId} className="flex items-center justify-between gap-2 text-xs">
-                  <span className={dep?.status === "shipped" ? "text-green-700 line-through dark:text-green-400" : ""}>
-                    {dep ? dep.title : "(removed idea)"}
-                  </span>
-                  <button
-                    className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-                    onClick={() => run("deps", () => setDependsOn(map._id, node.id, node.dependsOn!.filter((id) => id !== depId)))}
-                  >
-                    remove
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="text-xs text-neutral-400">Nothing blocking this yet.</p>
-        )}
-        <div className="flex gap-2">
-          <select className={`${input} text-xs`} value={addingDep} onChange={(e) => setAddingDep(e.target.value)}>
-            <option value="">Add a dependency…</option>
-            {map.nodes
-              .filter((n) => n.id !== node.id && n.status !== "rejected" && !(node.dependsOn ?? []).includes(n.id))
-              .map((n) => (
-                <option key={n.id} value={n.id}>{n.title}</option>
-              ))}
-          </select>
-          <button
-            className={secondary}
-            disabled={!addingDep}
-            onClick={() => {
-              run("deps", () => setDependsOn(map._id, node.id, [...(node.dependsOn ?? []), addingDep]));
-              setAddingDep("");
-            }}
-          >
-            Add
-          </button>
-        </div>
-      </div>
 
       <div className="flex flex-wrap gap-2 pt-1">
         {node.status === "suggested" && !building && !local && (

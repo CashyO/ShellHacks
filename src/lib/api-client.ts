@@ -18,9 +18,6 @@ export const getMap = (id: string) => call<{ map: CodeMap }>(`/api/maps/${id}`).
 export const setNodeStatus = (mapId: string, nodeId: string, status: NodeStatus, note?: string) =>
   send<{ map: CodeMap }>("PATCH", `/api/maps/${mapId}`, { nodeId, status, note }).then((r) => r.map);
 
-export const setDependsOn = (mapId: string, nodeId: string, dependsOn: string[]) =>
-  send<{ map: CodeMap }>("PATCH", `/api/maps/${mapId}`, { nodeId, dependsOn }).then((r) => r.map);
-
 export interface NewNodeInput {
   mapId: string;
   title: string;
