@@ -39,9 +39,12 @@ export async function POST(req: Request) {
     const token = getRequestToken(req);
     // Fresh contents from GitHub, not from the analyze-time snapshot.
     const current = await getFiles(owner, name, node.files, token);
-    const result = await generateJSON(prompts.build({ summary: map.summary, node, files: current }), BuildJson, BuildSchema);
-
-    const tree = await getTree(owner, name, token);
+    // The full repo tree (for path validation below) doesn't depend on Gemini's answer, so fetch it
+    // while we wait instead of after — this was adding a full extra GitHub round trip to every build.
+    const [result, tree] = await Promise.all([
+      generateJSON(prompts.build({ summary: map.summary, node, files: current }), BuildJson, BuildSchema),
+      getTree(owner, name, token),
+    ]);
     const oldByPath = new Map(current.map((f) => [f.path, f.content]));
     const changes: FileChange[] = [];
     const patches: string[] = [];

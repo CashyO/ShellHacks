@@ -15,21 +15,6 @@ const SHIPPED = "#1C9A50";
 const RADIUS: Record<Effort, number> = { S: 6, M: 8, L: 10 };
 const ROOT_R = 16;
 
-const basename = (p: string) => p.slice(p.lastIndexOf("/") + 1);
-
-// Conflict ripple: ideas that touch any of the same files as the hovered one, with the shared paths.
-function overlaps(target: GNode, nodes: GNode[]): Map<GNode, string[]> {
-  const mine = new Set(target.files ?? []);
-  const out = new Map<GNode, string[]>();
-  if (!mine.size) return out;
-  for (const n of nodes) {
-    if (n === target || n.id === "root" || n.status === "shipped") continue;
-    const shared = (n.files ?? []).filter((f) => mine.has(f));
-    if (shared.length) out.set(n, shared);
-  }
-  return out;
-}
-
 interface GNode {
   id: string;
   title: string;
@@ -66,7 +51,6 @@ export default function GraphCanvas({
   const nodeCache = useRef(new Map<string, GNode>());
   const [size, setSize] = useState({ w: 600, h: 500 });
   const [dark, setDark] = useState(false);
-  const ripple = useRef<{ node: GNode; related: Map<GNode, string[]> } | null>(null);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -130,15 +114,6 @@ export default function GraphCanvas({
     return { nodes, links };
   }, [map]);
 
-  // Keep the hover ripple in step with the data; drop it if its node left the graph (e.g. during replay).
-  useEffect(() => {
-    const rip = ripple.current;
-    if (!rip) return;
-    ripple.current = graphData.nodes.includes(rip.node)
-      ? { node: rip.node, related: overlaps(rip.node, graphData.nodes) }
-      : null;
-  }, [graphData]);
-
   useEffect(() => {
     const fg = fgRef.current;
     fg?.d3Force("charge")?.strength?.(-220);
@@ -158,8 +133,6 @@ export default function GraphCanvas({
     const y = node.y ?? 0;
     const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 350);
     const selected = node.id === selectedId;
-    const rip = ripple.current;
-    const inRipple = !rip || node === rip.node || rip.related.has(node);
 
     if (node.id === "root") {
       ctx.beginPath();
@@ -204,23 +177,12 @@ export default function GraphCanvas({
     const color = node.status === "shipped" ? SHIPPED : TYPE_COLOR[node.type ?? "feature"];
 
     ctx.save();
-    if (!inRipple) ctx.globalAlpha = 0.15;
     if (focusFile && node.files?.includes(focusFile)) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(x, y, r + 4 + 3 * pulse, 0, 2 * Math.PI);
       ctx.strokeStyle = "#06B6D4";
       ctx.globalAlpha *= 0.35 + 0.5 * (1 - pulse);
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.restore();
-    }
-    if (rip && rip.related.has(node)) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(x, y, r + 3 + 2.5 * pulse, 0, 2 * Math.PI);
-      ctx.strokeStyle = "#E8A317";
-      ctx.globalAlpha = 0.9 - 0.5 * pulse;
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.restore();
@@ -255,8 +217,8 @@ export default function GraphCanvas({
       ctx.fillStyle = color;
       ctx.fill();
     }
-    // Checkmark, selection ring and label ignore the building pulse; only the ripple dims them.
-    ctx.globalAlpha = inRipple ? 1 : 0.15;
+    // Checkmark, selection ring and label ignore the building pulse.
+    ctx.globalAlpha = 1;
     if (node.status === "shipped") {
       ctx.fillStyle = "#ffffff";
       ctx.font = `700 ${r * 1.3}px sans-serif`;
@@ -273,60 +235,13 @@ export default function GraphCanvas({
       ctx.stroke();
     }
 
-    if (scale > 0.6 || (rip && inRipple)) {
+    if (scale > 0.6) {
       ctx.fillStyle = ink;
       ctx.font = `${Math.max(9 / scale, 3.2)}px sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
       ctx.fillText(node.title, x, y + r + 4);
     }
-    ctx.restore();
-  }
-
-  // Dashed "shares files" links from the hovered idea, labeled with the shared file names.
-  function drawRipple(ctx: CanvasRenderingContext2D, scale: number) {
-    const rip = ripple.current;
-    if (!rip || !rip.related.size) return;
-    const ax = rip.node.x ?? 0;
-    const ay = rip.node.y ?? 0;
-    const font = Math.max(8 / scale, 2.8);
-    ctx.save();
-    for (const [n, shared] of rip.related) {
-      const bx = n.x ?? 0;
-      const by = n.y ?? 0;
-      ctx.beginPath();
-      ctx.setLineDash([4 / scale, 3 / scale]);
-      ctx.lineDashOffset = -Date.now() / 60 / scale;
-      ctx.moveTo(ax, ay);
-      ctx.lineTo(bx, by);
-      ctx.strokeStyle = "#E8A317";
-      ctx.lineWidth = 1.6 / scale;
-      ctx.stroke();
-
-      const label = shared.map(basename).join(", ");
-      ctx.font = `600 ${font}px sans-serif`;
-      const w = ctx.measureText(label).width + font;
-      const mx = (ax + bx) / 2;
-      const my = (ay + by) / 2;
-      ctx.setLineDash([]);
-      ctx.fillStyle = surface;
-      ctx.strokeStyle = "#E8A317";
-      ctx.lineWidth = 1 / scale;
-      ctx.beginPath();
-      ctx.roundRect(mx - w / 2, my - font * 0.8, w, font * 1.6, font * 0.8);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = dark ? "#FCD34D" : "#92400E";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, mx, my);
-    }
-    const head = `⚠ Shares files with ${rip.related.size} other idea${rip.related.size === 1 ? "" : "s"}`;
-    ctx.font = `600 ${font}px sans-serif`;
-    ctx.fillStyle = dark ? "#FCD34D" : "#92400E";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "bottom";
-    ctx.fillText(head, ax, ay - RADIUS[rip.node.effort ?? "S"] - 5);
     ctx.restore();
   }
 
@@ -355,11 +270,8 @@ export default function GraphCanvas({
           const br = fg.graph2ScreenCoords(bb.x[1], bb.y[1]);
           if (tl.x < 0 || tl.y < 0 || br.x > size.w || br.y > size.h) fg.zoomToFit(400, 70);
         }}
-        linkColor={() => (ripple.current ? (dark ? "#27272a" : "#e4e4e7") : muted)}
-        onRenderFramePost={drawRipple}
+        linkColor={() => muted}
         onNodeHover={(node) => {
-          ripple.current =
-            node && node.id !== "root" ? { node, related: overlaps(node, graphData.nodes) } : null;
           if (wrapRef.current) wrapRef.current.style.cursor = node ? "pointer" : "";
         }}
         linkWidth={0.8}
