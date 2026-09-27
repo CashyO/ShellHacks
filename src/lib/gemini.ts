@@ -35,6 +35,26 @@ async function callModel(model: string, prompt: string, responseSchema: object):
   }
 }
 
+// Turns Gemini failures into their own message. Status 502 (not 401/403) so the API routes
+// never report a Gemini key problem as a GitHub problem.
+function explain(e: unknown): Error {
+  const s = statusOf(e);
+  const raw = e instanceof Error ? e.message : String(e);
+  let msg = raw;
+  try {
+    msg = (JSON.parse(raw) as { error?: { message?: string } }).error?.message ?? raw;
+  } catch {
+    // message wasn't JSON; use it as is
+  }
+  let text = `Gemini error: ${msg.slice(0, 200)}`;
+  if (s === 401 || s === 403) text = "Gemini rejected the API key. Check GEMINI_API_KEY in .env.local (create a new key at aistudio.google.com/apikey) and restart the server.";
+  else if (s === 400 && /API key/i.test(msg)) text = "GEMINI_API_KEY isn't valid. Check it in .env.local and restart the server.";
+  else if (s === 404) text = `Gemini model not found or unavailable to this key. Check GEMINI_MODEL (${process.env.GEMINI_MODEL}).`;
+  const err = new Error(text) as Error & { status: number };
+  err.status = 502;
+  return err;
+}
+
 // Primary model first; if it stays overloaded, try GEMINI_FALLBACK_MODEL once.
 async function callWithFallback(prompt: string, responseSchema: object): Promise<string> {
   const primary = process.env.GEMINI_MODEL!;
@@ -42,13 +62,13 @@ async function callWithFallback(prompt: string, responseSchema: object): Promise
   try {
     return await callModel(primary, prompt, responseSchema);
   } catch (e) {
-    if (!isTransient(e)) throw e;
+    if (!isTransient(e)) throw explain(e);
     if (fallback && fallback !== primary) {
       try {
         return await callModel(fallback, prompt, responseSchema);
       } catch (e2) {
         e = e2;
-        if (!isTransient(e)) throw e;
+        if (!isTransient(e)) throw explain(e);
       }
     }
     const err = new Error("Gemini is overloaded right now. Please try again in a moment.") as Error & { status: number };
