@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMap, saveMap } from "@/lib/db";
 import { generateJSON } from "@/lib/gemini";
-import { describeError, getRequestToken, getTree } from "@/lib/github";
+import { describeError, getConventionDocs, getRequestToken, getTree } from "@/lib/github";
 import { isMock, mockExpand } from "@/lib/mock";
 import * as prompts from "@/lib/prompts";
 import { dropDuplicateTitles, ExpandJson, ExpandSchema, filterByTree, toNode } from "@/lib/schemas";
@@ -26,10 +26,12 @@ export async function POST(req: Request) {
     const parent = map.nodes.find((n) => n.id === nodeId);
     if (!parent) return NextResponse.json({ error: "Node not found" }, { status: 404 });
 
-    const tree = await getTree(map.repo.owner, map.repo.name, getRequestToken(req));
+    const token = getRequestToken(req);
+    const tree = await getTree(map.repo.owner, map.repo.name, token);
+    const conventions = await getConventionDocs(map.repo.owner, map.repo.name, tree, token);
     const existingTitles = map.nodes.map((n) => n.title);
     const result = await generateJSON(
-      prompts.expand({ summary: map.summary, tree, parent, existingTitles }),
+      prompts.expand({ summary: map.summary, tree, parent, existingTitles, conventions }),
       ExpandJson,
       ExpandSchema,
     );

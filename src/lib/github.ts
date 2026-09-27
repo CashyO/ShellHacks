@@ -1,6 +1,6 @@
 import { Octokit } from "@octokit/rest";
 import type { RepoSummary } from "./api-client";
-import type { Snapshot } from "./prompts";
+import { isConventionDoc, type Snapshot } from "./prompts";
 import { getSession } from "./session";
 import type { Proposal } from "./types";
 
@@ -129,6 +129,7 @@ export async function getTree(owner: string, name: string, token?: string): Prom
 const score = (p: string) => {
   const depth = p.split("/").length;
   if (/^readme(\.\w+)?$/i.test(p)) return 0;
+  if (isConventionDoc(p)) return 0.5 + depth / 100; // ARCHITECTURE.md etc: nearly as important as README
   if (MANIFEST.test(p)) return 1 + depth / 100;
   if (SOURCE.test(p)) return 2 + depth;
   return 20 + depth;
@@ -181,6 +182,31 @@ export async function getFiles(
       }
     }),
   );
+}
+
+const trimDoc = (f: { path: string; content: string | null }) => ({ path: f.path, content: (f.content ?? "").slice(0, 6000) });
+
+/** Best-effort, no tree lookup needed (safe to run in parallel with anything): tries common doc filenames directly. */
+const COMMON_CONVENTION_PATHS = ["ARCHITECTURE.md", "docs/ARCHITECTURE.md", "CONTRIBUTING.md", "docs/CONTRIBUTING.md", "DESIGN.md", "docs/DESIGN.md", "ADR.md"];
+export async function guessConventionDocs(owner: string, name: string, token?: string): Promise<{ path: string; content: string }[]> {
+  try {
+    const files = await getFiles(owner, name, COMMON_CONVENTION_PATHS, token);
+    return files.filter((f) => f.content !== null).map(trimDoc);
+  } catch {
+    return []; // optional context; never block a build over it
+  }
+}
+
+/** From an already-fetched tree: catches convention docs under any path, not just the common names. */
+export async function getConventionDocs(owner: string, name: string, tree: string[], token?: string): Promise<{ path: string; content: string }[]> {
+  const paths = tree.filter(isConventionDoc).slice(0, 3);
+  if (paths.length === 0) return [];
+  try {
+    const files = await getFiles(owner, name, paths, token);
+    return files.filter((f) => f.content !== null).map(trimDoc);
+  } catch {
+    return [];
+  }
 }
 
 export async function getRepoAccess(owner: string, name: string, token?: string): Promise<{ canWrite: boolean }> {

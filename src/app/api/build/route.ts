@@ -2,7 +2,7 @@ import { createTwoFilesPatch } from "diff";
 import { NextResponse } from "next/server";
 import { getMap, saveMap } from "@/lib/db";
 import { generateJSON } from "@/lib/gemini";
-import { describeError, getFiles, getRequestToken, getTree } from "@/lib/github";
+import { describeError, getFiles, getRequestToken, getTree, guessConventionDocs } from "@/lib/github";
 import { isMock, mockBuild } from "@/lib/mock";
 import * as prompts from "@/lib/prompts";
 import { BuildJson, BuildSchema, isPlausiblePath } from "@/lib/schemas";
@@ -37,12 +37,16 @@ export async function POST(req: Request) {
   try {
     const { owner, name } = map.repo;
     const token = getRequestToken(req);
-    // Fresh contents from GitHub, not from the analyze-time snapshot.
-    const current = await getFiles(owner, name, node.files, token);
+    // Fresh contents from GitHub, not from the analyze-time snapshot. Conventions are a speculative,
+    // fixed-filename guess (no tree lookup), so this stays parallel with everything else.
+    const [current, conventions] = await Promise.all([
+      getFiles(owner, name, node.files, token),
+      guessConventionDocs(owner, name, token),
+    ]);
     // The full repo tree (for path validation below) doesn't depend on Gemini's answer, so fetch it
     // while we wait instead of after — this was adding a full extra GitHub round trip to every build.
     const [result, tree] = await Promise.all([
-      generateJSON(prompts.build({ summary: map.summary, node, files: current }), BuildJson, BuildSchema),
+      generateJSON(prompts.build({ summary: map.summary, node, files: current, conventions }), BuildJson, BuildSchema),
       getTree(owner, name, token),
     ]);
     const oldByPath = new Map(current.map((f) => [f.path, f.content]));

@@ -34,7 +34,7 @@
 src/app/page.tsx              landing page
 src/app/map/[id]/page.tsx     map page (graph + panels, polling)
 src/app/api/*/route.ts        analyze, maps/[id], nodes (manual add), expand, build, pr, sync
-src/components/               Graph (+ GraphCanvas), Legend, DetailPanel, DiffView, ActivityFeed, Header
+src/components/               Graph (+ GraphCanvas), Legend, DetailPanel, DiffView, ActivityFeed, Header, DecisionsLog
 src/lib/types.ts              shared contract
 src/lib/schemas.ts            zod + Gemini response schemas
 src/lib/prompts.ts            prompt builders

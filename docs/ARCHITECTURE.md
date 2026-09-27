@@ -248,6 +248,12 @@ export async function generateJSON<T>(prompt: string, responseSchema: object, zo
 
 **AI cache** (`ai_cache` collection, `{ _id: hash, response, createdAt }`): the same prompt returns the same answer instantly. It makes the demo fast and deterministic. Set `AI_CACHE=off` to disable it while tuning prompts.
 
+**Convention grounding (built):** if the repo has an `ARCHITECTURE.md`, `CONTRIBUTING.md`, `DESIGN.md`, or an `ADR`-style file/folder, its content is pulled out as a separate `PROJECT CONVENTIONS` block in the analyze, expand, and build prompts (`prompts.isConventionDoc` / `renderConventions`) — treated as binding, so an idea that conflicts with a team's own documented rules gets dropped or explicitly flagged instead of silently suggested anyway. `analyze` gets these for free (the file-picker in `github.ts` scores them just under README). `expand` looks them up from the already-fetched tree. `build` speculatively fetches a short list of common filenames in parallel with everything else, so it costs no extra round trip when they don't exist.
+
+## 7a. Decisions log (built)
+
+`DecisionsLog.tsx`, opened from a "Decisions (n)" button in the header, lists every **rejected** idea with who rejected it and why (`rejectedBy` / `rejectedNote`, set by `PATCH /api/maps/[id]`). Rejected nodes are hidden from the graph itself (§8), so this is the only place that record is visible — the point being a durable, searchable "what we already considered and said no to," which a chat session has no equivalent of.
+
 ## 8. Frontend behavior
 
 - `/map/[id]` loads the map, renders `Graph` (left, flexible width) and `DetailPanel` + `ActivityFeed` (right, 380px).

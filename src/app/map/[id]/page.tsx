@@ -3,6 +3,7 @@
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import ActivityFeed from "@/components/ActivityFeed";
 import AgentPulse, { type AgentState } from "@/components/AgentPulse";
+import DecisionsLog from "@/components/DecisionsLog";
 import DetailPanel from "@/components/DetailPanel";
 import Graph from "@/components/Graph";
 import Header from "@/components/Header";
@@ -35,6 +36,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
   const [agent, setAgent] = useState<AgentState | null>(null); // set only when embedded by the VS Code extension
   const [narrow, setNarrow] = useState(false); // docked beside code: details slide over the map
   const [drawer, setDrawer] = useState(false);
+  const [showDecisions, setShowDecisions] = useState(false);
   const select = (nodeId: string) => {
     setSelectedId(nodeId);
     if (nodeId !== "root") setDrawer(true);
@@ -122,7 +124,14 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
 
   return (
     <div className="flex h-screen flex-col">
-      <Header map={map} syncedAt={syncedAt} />
+      <Header map={map} syncedAt={syncedAt} onOpenDecisions={() => setShowDecisions(true)} />
+      {showDecisions && (
+        <DecisionsLog
+          map={map}
+          onSelect={(nodeId) => select(nodeId)}
+          onClose={() => setShowDecisions(false)}
+        />
+      )}
       <div className="relative flex min-h-0 flex-1">
         <section className="relative min-w-0 flex-1">
           <div className="absolute inset-0">
