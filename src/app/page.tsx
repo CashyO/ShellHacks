@@ -4,35 +4,55 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { analyze } from "@/lib/api-client";
 
-const LOADING_LINES = [
-  "Reading the file tree…",
-  "Reading your code…",
-  "Looking for what's missing…",
-  "Finding ideas grounded in your files…",
-  "Almost there…",
-];
+type Spitball = {
+  start: (o?: {
+    color?: string;
+    backdrop?: "flow" | "none";
+    label?: boolean;
+    labelText?: string;
+    ideas?: [string, string][];
+  }) => Spitball;
+  progress: (p: number) => Spitball;
+  done: () => Promise<void>;
+  destroy: () => void;
+  readonly active: boolean;
+};
+
+const spitball = () =>
+  typeof window !== "undefined"
+    ? (window as unknown as { SpitballLoader?: Spitball }).SpitballLoader
+    : undefined;
 
 export default function Landing() {
   const router = useRouter();
   const [repoUrl, setRepoUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [line, setLine] = useState(0);
 
   useEffect(() => {
-    if (!busy) return;
-    const t = setInterval(() => setLine((l) => Math.min(l + 1, LOADING_LINES.length - 1)), 3500);
-    return () => clearInterval(t);
-  }, [busy]);
+    const loader = spitball();
+    if (!loader || sessionStorage.getItem("spitball-seen")) return;
+
+    sessionStorage.setItem("spitball-seen", "1");
+    loader.start({ backdrop: "flow" });
+
+    const finish = () => setTimeout(() => loader.done(), 1200);
+    if (document.readyState === "complete") finish();
+    else window.addEventListener("load", finish, { once: true });
+  }, []);
 
   async function go(url: string) {
+    const loader = spitball();
     setBusy(true);
-    setLine(0);
     setError(null);
+    loader?.start({ labelText: "Analyzing repo" });
+
     try {
       const map = await analyze(url);
+      await loader?.done();
       router.push(`/map/${map._id}`);
     } catch (e) {
+      loader?.destroy();
       setError((e as Error).message);
       setBusy(false);
     }
@@ -78,12 +98,6 @@ export default function Landing() {
           </button>
         </div>
       </form>
-      {busy && (
-        <p className="flex items-center gap-2 text-sm text-neutral-500">
-          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          {LOADING_LINES[line]}
-        </p>
-      )}
       {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
     </main>
   );
