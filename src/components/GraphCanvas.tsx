@@ -129,10 +129,7 @@ export default function GraphCanvas({
 
   const fitted = useRef(false);
 
-  const total = map.nodes.filter((n) => n.status !== "rejected").length;
-  const shipped = map.nodes.filter((n) => n.status === "shipped").length;
   const ink = dark ? "#f4f4f5" : "#18181b";
-  const surface = dark ? "#09090b" : "#ffffff";
   const muted = dark ? "#71717a" : "#a1a1aa";
 
   function drawNode(node: GNode, ctx: CanvasRenderingContext2D, scale: number) {
@@ -153,19 +150,6 @@ export default function GraphCanvas({
       ctx.lineWidth = 3;
       ctx.stroke();
       ctx.globalAlpha = 1;
-      if (total > 0 && shipped > 0) {
-        ctx.beginPath();
-        ctx.arc(x, y, ROOT_R + 4, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI * shipped) / total);
-        ctx.strokeStyle = SHIPPED;
-        ctx.lineWidth = 3;
-        ctx.lineCap = "round";
-        ctx.stroke();
-      }
-      ctx.fillStyle = surface;
-      ctx.font = `700 ${7}px sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(total ? `${Math.round((100 * shipped) / total)}%` : "", x, y);
       ctx.fillStyle = ink;
       ctx.font = `500 ${Math.max(9 / scale, 3.5)}px sans-serif`;
       ctx.textBaseline = "top";

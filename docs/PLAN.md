@@ -60,7 +60,7 @@ Nobody sleeps during Phases 1–2, since that's when the seams are built. Take *
 ## Phase 1: Build in parallel · H+0 to H+4 (about 12 PM–4 PM)
 
 ### Joeco (P1)
-- [x] `Graph.tsx` / `GraphCanvas.tsx`: react-force-graph-2d, synthetic root, links, custom node drawing (color by type, size by effort, dashed / pulsing / solid / green ✓ by status), click to select, background click selects root, progress ring, x/y preserved across updates, new nodes spawn near their parent *(first version by Josiah; Joeco owns it from here, so tune the look)*
+- [x] `Graph.tsx` / `GraphCanvas.tsx`: react-force-graph-2d, synthetic root, links, custom node drawing (color by type, size by effort, dashed / pulsing / solid / green ✓ by status), click to select, background click selects root, x/y preserved across updates, new nodes spawn near their parent *(first version by Josiah; Joeco owns it from here, so tune the look)*
 - [ ] Look and feel pass: spacing, node sizes, label legibility, dark mode, zoom-to-fit
 - [ ] `Legend.tsx`, `Header.tsx` ("Watching main · synced <sha>"), landing page styling and loading lines ("Reading file tree…", "Finding ideas…")
 - [ ] Global styling tokens the panels reuse

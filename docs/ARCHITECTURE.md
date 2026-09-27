@@ -262,7 +262,7 @@ export async function generateJSON<T>(prompt: string, responseSchema: object, zo
     - shipped = green `#1C9A50` with ✓
     - rejected = hidden
   - Size = effort (S 6, M 8, L 10 at graph scale).
-  - The root shows a progress ring: shipped / total.
+  - The root is a plain circle labeled with the repo name (no progress ring or percentage).
 - **DetailPanel actions by status:**
   - suggested: Build it · Expand · Copy prompt
   - building: spinner
