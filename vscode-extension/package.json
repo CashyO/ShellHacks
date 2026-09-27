@@ -2,7 +2,7 @@
   "name": "projectgraph",
   "displayName": "ProjectGraph",
   "description": "A living mind map of your local repo that grows with every commit and suggests ideas while you code.",
-  "version": "0.5.1",
+  "version": "0.6.1",
   "publisher": "projectgraph",
   "license": "UNLICENSED",
   "repository": {

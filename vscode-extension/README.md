@@ -12,8 +12,9 @@ checkout and sends it to the ProjectGraph app (`/api/local/*`), which uses Gemin
   errors in the file, recent files and uncommitted diff, says what it thinks you're doing, and pitches 0–2
   ideas for that moment. They sprout on the map and in "Pitched for you" (✕ dismisses one). It sends at most
   one request per 45 s, and nothing when you're still in the same function with the same changes.
-- Click a file on an idea's detail panel to open it in the editor. **Expand** works on local maps too.
-  Build it / Open PR are hidden for local maps: you build in your editor and commit.
+- **Build it** on any bubble: Gemini writes the change from your current files, VS Code shows it as a diff,
+  and **Apply** writes it into your working tree. Then test and commit, and the bubble turns green.
+  **Open files** jumps to the idea's code; **Expand** breaks an idea into smaller ones. (Open PR is GitHub-only.)
 
 ## Install
 
@@ -22,7 +23,7 @@ Download `projectgraph-<version>.vsix` from the
 **Extensions: Install from VSIX…** (⌘⇧P / Ctrl+Shift+P) and pick the file. Or from a terminal:
 
 ```bash
-code --install-extension projectgraph-0.5.1.vsix
+code --install-extension projectgraph-0.6.1.vsix
 ```
 
 The extension is a front end: it needs the ProjectGraph app running (next section). Your code snippets and

@@ -19,6 +19,9 @@ const path = require("path");
 const crypto = require("crypto");
 
 const MAP_KEY = "projectgraph.mapId";
+// Page messages this build handles; sent on "ready" so the map can hide or explain buttons an older
+// extension would silently ignore.
+const FEATURES = ["openFile", "openFiles", "build", "review", "copy", "agent"];
 const HEAD_POLL_MS = 4000;
 
 // Same snapshot rules as src/lib/github.ts, applied to the local checkout.
@@ -45,6 +48,10 @@ let statusReset;
 let chain = Promise.resolve();
 let focusTimer;
 let recentFiles = [];
+// Proposed file contents shown on the right side of review diffs (scheme projectgraph-proposal:).
+const PROPOSAL_SCHEME = "projectgraph-proposal";
+const proposals = new Map();
+const proposalChanged = new vscode.EventEmitter();
 // Live agent state mirrored to the map page (src/components/AgentPulse.tsx).
 const agent = { state: "watching", focus: undefined, thought: "", pitches: [] };
 
@@ -343,20 +350,147 @@ const sidebarProvider = {
 
 /** Messages the map page sends up through the webview (see src/app/map/[id]/page.tsx and DetailPanel). */
 async function onPageMessage(msg) {
-  if (msg && msg.type === "projectgraph:ready") return pushAgent();
+  if (msg && msg.type === "projectgraph:ready") {
+    post({ type: "projectgraph:hello", version: ctx.extension.packageJSON.version, features: FEATURES });
+    return pushAgent();
+  }
   // Webview frames can't always use the browser clipboard, so the page asks VS Code to copy instead.
   if (msg && msg.type === "projectgraph:copy" && typeof msg.text === "string") {
     await vscode.env.clipboard.writeText(msg.text);
     return post({ type: "projectgraph:copied" });
   }
+  if (msg && (msg.type === "projectgraph:build" || msg.type === "projectgraph:review") && typeof msg.nodeId === "string") {
+    return buildIdea(msg.nodeId, msg.type === "projectgraph:review");
+  }
+  if (msg && msg.type === "projectgraph:openFiles" && Array.isArray(msg.paths)) {
+    const paths = msg.paths.filter((p) => typeof p === "string");
+    const missing = [];
+    for (const p of paths) if (!(await openFile(p, false))) missing.push(p);
+    // Tell the page too: a corner notification alone is easy to miss.
+    return post({ type: "projectgraph:openResult", nodeId: msg.nodeId, opened: paths.length - missing.length, missing });
+  }
   if (!msg || msg.type !== "projectgraph:openFile" || typeof msg.path !== "string" || !repoRoot) return;
-  const abs = path.join(repoRoot, msg.path);
-  if (rel(abs).startsWith("..")) return;
-  if (!fs.existsSync(abs)) {
+  if (!(await openFile(msg.path, false))) {
     vscode.window.showInformationMessage(`ProjectGraph: ${msg.path} doesn't exist yet; this idea would create it.`);
+  }
+}
+
+/** Repo-relative path -> absolute path inside the repo, or undefined if it escapes the repo. */
+function repoPath(p) {
+  if (!repoRoot) return undefined;
+  const abs = path.join(repoRoot, p);
+  return rel(abs).startsWith("..") ? undefined : abs;
+}
+
+async function openFile(p, preview) {
+  const abs = repoPath(p);
+  if (!abs || !fs.existsSync(abs)) return false;
+  await vscode.window.showTextDocument(vscode.Uri.file(abs), { viewColumn: vscode.ViewColumn.One, preview, preserveFocus: false });
+  return true;
+}
+
+/** Current editor contents (including unsaved edits) or file on disk; null if it doesn't exist. */
+function readCurrent(abs) {
+  const open = vscode.workspace.textDocuments.find((d) => d.uri.scheme === "file" && d.uri.fsPath === abs);
+  if (open) return open.getText();
+  return fs.existsSync(abs) ? fs.readFileSync(abs, "utf8") : null;
+}
+
+const buildStatus = (nodeId, state, message) => post({ type: "projectgraph:buildStatus", nodeId, state, message });
+
+/**
+ * Build it: Gemini writes the change from the idea's current files (or reuse the stored proposal when
+ * `reuse`), the change opens as diffs in the editor, and Apply writes it into the working tree.
+ */
+async function buildIdea(nodeId, reuse) {
+  const id = mapId();
+  if (!id || !repoRoot) return;
+  try {
+    let { map } = await api(`/api/maps/${id}`);
+    let node = map.nodes.find((n) => n.id === nodeId);
+    if (!node) throw new Error("That idea is no longer on the map.");
+
+    if (!reuse || !node.proposal) {
+      buildStatus(nodeId, "building", "Writing the change…");
+      setStatus("$(loading~spin) ProjectGraph: building…", `Writing "${node.title}"`);
+      const files = node.files
+        .map((p) => ({ p, abs: repoPath(p) }))
+        .filter((f) => f.abs)
+        .map((f) => ({ path: f.p, content: readCurrent(f.abs) }));
+      ({ map } = await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: `ProjectGraph: building "${node.title}"…` },
+        () => api("/api/local/build", { mapId: id, nodeId, files }),
+      ));
+      refresh(nodeId);
+      node = map.nodes.find((n) => n.id === nodeId);
+      setStatus("$(type-hierarchy) ProjectGraph");
+    }
+    await reviewProposal(node);
+  } catch (e) {
+    buildStatus(nodeId, "error", e.message);
+    fail(e, true);
+  }
+}
+
+async function reviewProposal(node) {
+  const changes = node.proposal.changes.filter((c) => repoPath(c.path));
+  buildStatus(node.id, "review", "Review the diff in VS Code, then Apply.");
+
+  // One diff per file: current code (left) vs proposed code (right).
+  for (const c of changes) {
+    const right = vscode.Uri.from({ scheme: PROPOSAL_SCHEME, path: `/${node.id}/${c.path}` });
+    proposals.set(right.toString(), c.newContent);
+    proposalChanged.fire(right);
+    const abs = repoPath(c.path);
+    const left = fs.existsSync(abs)
+      ? vscode.Uri.file(abs)
+      : vscode.Uri.from({ scheme: PROPOSAL_SCHEME, path: `/${node.id}/empty/${c.path}` });
+    if (!fs.existsSync(abs)) proposals.set(left.toString(), "");
+    await vscode.commands.executeCommand("vscode.diff", left, right, `${c.path} ↔ ${node.title}${c.isNew ? " (new file)" : ""}`, {
+      viewColumn: vscode.ViewColumn.One,
+      preview: false,
+    });
+  }
+
+  const files = changes.map((c) => c.path).join(", ");
+  const pick = await vscode.window.showInformationMessage(
+    `ProjectGraph: "${node.title}" changes ${files}. Apply it to your files?`,
+    "Apply",
+    "Discard",
+  );
+  if (pick !== "Apply") {
+    buildStatus(node.id, "idle", pick === "Discard" ? "Discarded. The proposal is still saved on the idea." : "");
     return;
   }
-  await vscode.window.showTextDocument(vscode.Uri.file(abs), { viewColumn: vscode.ViewColumn.One, preview: false });
+  await applyProposal(node, changes);
+}
+
+async function applyProposal(node, changes) {
+  const edit = new vscode.WorkspaceEdit();
+  for (const c of changes) {
+    const uri = vscode.Uri.file(repoPath(c.path));
+    if (!fs.existsSync(uri.fsPath)) {
+      edit.createFile(uri, { ignoreIfExists: true });
+      edit.insert(uri, new vscode.Position(0, 0), c.newContent);
+      continue;
+    }
+    const doc = await vscode.workspace.openTextDocument(uri);
+    edit.replace(uri, new vscode.Range(doc.positionAt(0), doc.positionAt(doc.getText().length)), c.newContent);
+  }
+  if (!(await vscode.workspace.applyEdit(edit))) throw new Error("VS Code couldn't apply the change.");
+  for (const c of changes) {
+    const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(repoPath(c.path)));
+    await doc.save();
+  }
+  // Close the review diffs and show the real files.
+  for (const tab of vscode.window.tabGroups.all.flatMap((g) => g.tabs)) {
+    if (tab.input instanceof vscode.TabInputTextDiff && tab.input.modified.scheme === PROPOSAL_SCHEME) {
+      await vscode.window.tabGroups.close(tab);
+    }
+  }
+  for (const c of changes) await openFile(c.path, false);
+  buildStatus(node.id, "applied", "Applied. Test it, then commit to grow the map.");
+  setStatus("$(check) ProjectGraph: change applied", `"${node.title}" applied; commit when it works`, 10000);
 }
 
 const refresh = (select) => post({ type: "projectgraph:refresh", select });
@@ -531,6 +665,10 @@ async function activate(context) {
     status,
     vscode.commands.registerCommand("projectgraph.open", open),
     vscode.commands.registerCommand("projectgraph.mapRepository", mapRepository),
+    vscode.workspace.registerTextDocumentContentProvider(PROPOSAL_SCHEME, {
+      onDidChange: proposalChanged.event,
+      provideTextDocumentContent: (uri) => proposals.get(uri.toString()) ?? "",
+    }),
     vscode.commands.registerCommand("projectgraph.showInSidebar", () => vscode.commands.executeCommand("projectgraph.map.focus")),
     vscode.window.registerWebviewViewProvider("projectgraph.map", sidebarProvider, {
       // Keep the graph's layout and replay position when the sidebar is collapsed.

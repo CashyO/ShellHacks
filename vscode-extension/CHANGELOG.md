@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.1 (2026-09-27)
+
+### Fixes
+- Buttons no longer fail silently when VS Code is running an older copy of the extension: the extension
+  reports its features on load, and the map asks you to reload VS Code instead of doing nothing.
+- **Open files** reports back on the bubble which files it opened and which don't exist yet (with a
+  pointer to Build it), instead of only a corner notification.
+
+## 0.6.0 (2026-09-27)
+
+### Features
+- **Build it** on every bubble of a local map: Gemini writes the change from your current files (including
+  unsaved edits), VS Code opens a diff per file, and **Apply** writes it into your working tree (creating new
+  files) and opens the result. **Review in VS Code** reopens a saved proposal; **Rebuild** writes a new one.
+- **Open files** opens all of an idea's files in the editor (and says which ones don't exist yet).
+
 ## 0.5.1 (2026-09-27)
 
 ### Fixes

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { buildNode, expandNode, openPr, setNodeStatus } from "@/lib/api-client";
 import type { CodeMap, IdeaNode, NodeStatus, NodeType } from "@/lib/types";
 import { expandLocalNode, isLocalMap } from "@/lib/local-client";
@@ -85,6 +85,17 @@ function copyPrompt(map: CodeMap, node: IdeaNode) {
   return copyText(text);
 }
 
+// The extension's "hello" arrives once, right after the page loads; keep it across DetailPanel remounts
+// (the panel is re-keyed on every selection).
+let vsCodeFeatures: string[] | null = null;
+if (typeof window !== "undefined" && window.parent !== window) {
+  window.addEventListener("message", (e) => {
+    if (e.source === window.parent && e.data?.type === "projectgraph:hello" && Array.isArray(e.data.features)) {
+      vsCodeFeatures = e.data.features;
+    }
+  });
+}
+
 const btn =
   "rounded-md px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50";
 const primary = `${btn} bg-neutral-900 text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300`;
@@ -114,7 +125,39 @@ export default function DetailPanel({
   // Local maps come from the VS Code extension: no GitHub, so no Build/PR, and file chips open in the editor.
   const local = isLocalMap(map);
   const embedded = typeof window !== "undefined" && window.parent !== window;
-  const openInEditor = (path: string) => window.parent.postMessage({ type: "projectgraph:openFile", path }, "*");
+  const toVsCode = (msg: object) => window.parent.postMessage(msg, "*");
+  const openInEditor = (path: string) => toVsCode({ type: "projectgraph:openFile", path });
+  // Build progress for this idea, reported by the VS Code extension (building → review → applied).
+  const [vsBuild, setVsBuild] = useState<{ state: string; message: string } | null>(null);
+  // What the running extension supports (null = it hasn't said, i.e. an older build that predates the handshake).
+  const [vsFeatures, setVsFeatures] = useState<string[] | null>(() => vsCodeFeatures);
+  const outdated = (feature: string) => local && embedded && !vsFeatures?.includes(feature);
+  const needReload = () =>
+    setError("Your ProjectGraph extension is out of date. In VS Code run “Developer: Reload Window” (or install the latest .vsix), then try again.");
+
+  useEffect(() => {
+    if (!local || window.parent === window) return;
+    const onMessage = (e: MessageEvent) => {
+      if (e.source !== window.parent) return;
+      if (e.data?.type === "projectgraph:hello" && Array.isArray(e.data.features)) setVsFeatures(e.data.features);
+      if (e.data?.type === "projectgraph:openResult" && e.data.nodeId === selectedId && Array.isArray(e.data.missing)) {
+        const missing = e.data.missing as string[];
+        const opened = Number(e.data.opened) || 0;
+        setVsBuild(
+          missing.length
+            ? {
+                state: "info",
+                message: `${missing.join(", ")} ${missing.length > 1 ? "don't" : "doesn't"} exist yet${opened ? ` (opened the other ${opened})` : ""}. Build it to create ${missing.length > 1 ? "them" : "it"}.`,
+              }
+            : { state: "info", message: `Opened ${opened} file${opened === 1 ? "" : "s"} in the editor.` },
+        );
+      }
+      if (e.data?.type !== "projectgraph:buildStatus" || e.data.nodeId !== selectedId) return;
+      setVsBuild({ state: String(e.data.state), message: String(e.data.message ?? "") });
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [local, selectedId]);
 
   async function run(label: string, fn: () => Promise<CodeMap>) {
     setBusy(label);
@@ -171,7 +214,7 @@ export default function DetailPanel({
     );
   }
 
-  const building = node.status === "building" || busy === "build";
+  const building = node.status === "building" || busy === "build" || vsBuild?.state === "building";
   const showProposal = node.proposal && !dismissed.has(node.id) && node.status !== "shipped";
 
   return (
@@ -211,8 +254,20 @@ export default function DetailPanel({
         )}
       </div>
 
-      {local && node.status === "suggested" && (
-        <p className="text-xs text-neutral-500">Local repo: build it in your editor. The map updates when you commit.</p>
+      {local && !embedded && node.status !== "shipped" && (
+        <p className="text-xs text-neutral-500">Open this map in VS Code to build it. The map updates when you commit.</p>
+      )}
+      {local && vsBuild?.message && vsBuild.state !== "building" && (
+        <p
+          className={
+            vsBuild.state === "error"
+              ? "rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300"
+              : "rounded-md bg-cyan-50 p-2 text-xs text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200"
+          }
+        >
+          {vsBuild.state === "applied" ? "✓ " : ""}
+          {vsBuild.message}
+        </p>
       )}
 
       {error && <p className="rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
@@ -251,6 +306,32 @@ export default function DetailPanel({
       )}
 
       <div className="flex flex-wrap gap-2 pt-1">
+        {local && embedded && node.status !== "shipped" && !building && (
+          <>
+            {node.proposal ? (
+              <>
+                <button className={primary} onClick={() => (outdated("review") ? needReload() : toVsCode({ type: "projectgraph:review", nodeId: node.id }))}>
+                  Review in VS Code
+                </button>
+                <button className={secondary} onClick={() => (outdated("build") ? needReload() : toVsCode({ type: "projectgraph:build", nodeId: node.id }))}>
+                  Rebuild
+                </button>
+              </>
+            ) : (
+              <button className={primary} onClick={() => (outdated("build") ? needReload() : toVsCode({ type: "projectgraph:build", nodeId: node.id }))}>
+                Build it
+              </button>
+            )}
+          </>
+        )}
+        {local && embedded && (
+          <button
+            className={secondary}
+            onClick={() => (outdated("openFiles") ? needReload() : toVsCode({ type: "projectgraph:openFiles", nodeId: node.id, paths: node.files }))}
+          >
+            Open files
+          </button>
+        )}
         {node.status === "suggested" && !building && !local && (
           <>
             {showProposal ? (
