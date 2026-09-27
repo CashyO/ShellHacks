@@ -4,6 +4,27 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { analyze, getMe, listRepos, logout, type Me, type RepoSummary } from "@/lib/api-client";
 
+// The "Spitball" loading animation (public/spitball-loader.js, loaded in layout.tsx). Optional: if the script
+// isn't available, the page falls back to the text progress card below.
+type Spitball = {
+  start: (o?: {
+    color?: string;
+    backdrop?: "flow" | "none";
+    label?: boolean;
+    labelText?: string;
+    ideas?: [string, string][];
+  }) => Spitball;
+  progress: (p: number) => Spitball;
+  done: () => Promise<void>;
+  destroy: () => void;
+  readonly active: boolean;
+};
+
+const spitball = () =>
+  typeof window !== "undefined"
+    ? (window as unknown as { SpitballLoader?: Spitball }).SpitballLoader
+    : undefined;
+
 const LOADING_LINES = [
   "Reading the file tree…",
   "Reading your code…",
@@ -30,8 +51,22 @@ export default function Landing() {
   const [query, setQuery] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [showCard, setShowCard] = useState(false); // text fallback when the animation script is missing
   const [error, setError] = useState<string | null>(null);
   const [line, setLine] = useState(0);
+
+  // One-time intro animation per browser session.
+  useEffect(() => {
+    const loader = spitball();
+    if (!loader || sessionStorage.getItem("spitball-seen")) return;
+
+    sessionStorage.setItem("spitball-seen", "1");
+    loader.start({ backdrop: "flow" });
+
+    const finish = () => setTimeout(() => loader.done(), 1200);
+    if (document.readyState === "complete") finish();
+    else window.addEventListener("load", finish, { once: true });
+  }, []);
 
   useEffect(() => {
     const authError = new URLSearchParams(window.location.search).get("auth_error");
@@ -52,10 +87,10 @@ export default function Landing() {
   }, [me?.user]);
 
   useEffect(() => {
-    if (!busy) return;
+    if (!busy || !showCard) return;
     const t = setInterval(() => setLine((l) => Math.min(l + 1, LOADING_LINES.length - 1)), 3500);
     return () => clearInterval(t);
-  }, [busy]);
+  }, [busy, showCard]);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -63,13 +98,19 @@ export default function Landing() {
   }, [repos, query]);
 
   async function go(target: string, label: string) {
+    const loader = spitball();
     setBusy(label);
+    setShowCard(!loader);
     setLine(0);
     setError(null);
+    loader?.start({ labelText: "Analyzing repo" });
+
     try {
       const map = await analyze(target);
+      await loader?.done();
       router.push(`/map/${map._id}`);
     } catch (e) {
+      loader?.destroy();
       setError((e as Error).message);
       setBusy(null);
     }
@@ -103,7 +144,7 @@ export default function Landing() {
         </p>
       )}
 
-      {busy && (
+      {busy && showCard && (
         <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
           <p className="text-sm font-medium">Analyzing {busy}</p>
           <p className="mt-2 flex items-center gap-2 text-sm text-neutral-500">
