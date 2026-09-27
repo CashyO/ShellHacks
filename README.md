@@ -1,141 +1,126 @@
-# Spitball — a living mind map of what to build next
+# Spitball
 
-## 🚀 Overview
-Spitball turns a GitHub repo (or a local checkout, via the VS Code extension) into a living mind map of what to build next — grounded in your actual files, respecting the conventions your team already wrote down, updated automatically by your commits, and executable: click a bubble and get a real pull request.
+**What should I build next?** Every developer asks it. Spitball answers it for your repo.
 
-**Why not just prompt Claude Code?** For "fix this one thing right now," a chat tool wins — more flexible, no context switch. What a chat session can't do is remember, across time and across people, what your team already decided. Spitball writes that down automatically: reject an idea and say why, and it's permanent and visible to every teammate; push a commit and the map updates on its own, merged PRs turn ideas green, and new ideas sprout from what just shipped — no one has to ask.
+Point Spitball at a GitHub repo (or open a local project in VS Code) and it reads your code and turns it into a mind map of ideas: features, fixes, tests, security holes. Each one points at the actual file or function it's about. Then it keeps up with you. Push a commit and the map notices what you built, turns those ideas green, and sprouts the next ones. Like an idea? Click it and Spitball writes the code and opens the pull request.
 
-## ✨ Features
-- **Living mind map**: a force-directed graph — color = idea type, size = effort, dashed/pulsing/solid/green = status
-- **Grounded ideas**: every suggestion cites a real file or function via Gemini structured output, validated end to end with zod
-- **Convention-aware**: reads your repo's own `ARCHITECTURE.md`/`CONTRIBUTING.md`/ADRs and treats them as binding, not optional
-- **Build → PR**: Gemini writes the full new file contents, the server computes the diff, you review it, then it opens a real GitHub PR
-- **Sync loop**: merge a PR → the node turns green; push a hand-written commit → the map *detects* what you built and sprouts follow-up ideas
-- **GitHub sign-in**: OAuth, encrypted session cookie, a searchable picker of your own repos — PRs open as you, including on private repos
-- **Manual planning**: add an idea by hand, select several with Ctrl/Cmd-click and build them all at once, reject with a reason
-- **Decisions log**: every rejected idea, who rejected it, and why — the one place that record is visible
-- **VS Code extension**: a passive agent that watches your local editor, pitches ideas as you code, and can build and apply changes to your working tree directly — no GitHub required for local repos
-- **AI response cache**: Mongo-backed, so the same prompt returns the same answer instantly
+Try it live: **<https://shellhacks-projectgraph-qrx89.ondigitalocean.app>**
 
-## 🏗️ Tech Stack
+## Why not just ask Claude Code or Copilot?
 
-### Backend
-- **Next.js (App Router)**: API routes and server rendering, one deploy
-- **Gemini API** (`@google/genai`): structured output, JSON-schema validated
-- **zod**: every AI response is validated before it touches the database
-- **MongoDB Atlas**: persisted maps + AI response cache
-- **Octokit**: real GitHub reads, commits, and pull requests
-- **Hand-rolled GitHub OAuth**: AES-GCM encrypted session cookie, no auth library
+Honestly, for "fix this one thing right now," a chat tool is the better choice: it's more flexible and you never leave your editor. We use them too.
 
-### Frontend
-- **React 19 + TypeScript**
-- **react-force-graph-2d**: canvas-based mind map
-- **Tailwind CSS**
+What a chat session can't do is *remember*. It doesn't know what your team already tried, what you decided against and why, or what shipped last week. Spitball keeps that. Reject an idea and say why, and every teammate sees that decision from then on. Merge a PR and its bubble turns green on its own. Push something by hand and Spitball figures out what you built. Nobody has to keep the backlog up to date, because the map updates itself.
 
-### VS Code Extension
-- Plain `vscode` API, no bundler — reads your local git checkout and talks to the same Next.js API
+## What it does
 
-## 🛠️ Setup Instructions
+- **Reads your code, not a template.** Every idea has to cite a real file or function in your repo. Gemini returns structured output, and we validate it with zod before it's saved, so made-up paths get thrown out.
+- **Follows your team's rules.** If you have an `ARCHITECTURE.md`, `CONTRIBUTING.md` or ADRs, Spitball reads them and treats them as binding.
+- **Builds the idea.** Gemini writes the full new file contents, the server computes the diff, you look it over, and then it opens a real pull request.
+- **Grows with your commits.** A merged PR turns its bubble green. A commit you wrote yourself gets detected as new work, and follow-up ideas sprout from it.
+- **Signs you in with GitHub.** You pick from your own repos (private ones included), and PRs open under your name.
+- **Lets you plan by hand, too.** Add your own ideas, Ctrl/Cmd-click a few and build them together, or reject one with a reason.
+- **Keeps a decisions log.** Every rejected idea, who rejected it and why, in one place.
+- **Has a VS Code extension.** A quiet agent watches what you're working on, pitches ideas when you pause, and can build a change and apply it to your files. It works on local repos, no GitHub needed.
+- **Caches AI answers** in Mongo, so the same question gets the same answer instantly (handy during a live demo).
 
-### Prerequisites
-- Node.js 20 or higher
-- A Google Gemini API key ([get one here](https://aistudio.google.com/apikey))
-- A MongoDB Atlas cluster (free tier is enough) — optional for local UI work, required for real data to persist
+## How it's built
 
-### 1. Clone the Repository
+It's a single Next.js app (App Router): the API routes are the backend, and there's one thing to deploy.
+
+- **AI:** Gemini through `@google/genai`, with JSON-schema structured output. Every response goes through zod before it touches the database.
+- **Data:** MongoDB Atlas holds the maps and the AI response cache.
+- **GitHub:** Octokit for reading repos, committing and opening PRs. Sign-in is hand-rolled OAuth with an AES-GCM encrypted session cookie, no auth library.
+- **Frontend:** React 19, TypeScript and Tailwind. The map is `react-force-graph-2d` with our own canvas drawing.
+- **VS Code extension:** plain `vscode` API, no bundler. It reads your local git checkout and talks to the same API.
+
+## Running it yourself
+
+You'll need Node.js 20+. For real repos you'll also want a [Gemini API key](https://aistudio.google.com/apikey) and a MongoDB Atlas cluster (the free tier is plenty). If you just want to click around the UI, you can skip both for now.
+
 ```bash
-git clone https://github.com/CashyO/ShellHacks.git
+git clone https://github.com/CashyO/SpitBall-ShellHacks.git
 cd ShellHacks
-```
-
-### 2. Install Dependencies
-```bash
 npm install
-```
-
-### 3. Configure Environment
-```bash
 cp .env.example .env.local
-```
-`.env.local` ships with `MOCK_MODE=true`, so it runs with **no keys at all**. To use real repos, set `GEMINI_API_KEY`, `GEMINI_MODEL`, `MONGODB_URI`, and `MOCK_MODE=false` — see `.env.example` for every variable and `docs/ARCHITECTURE.md` §9 for details.
-
-### 4. Start the App
-```bash
 npm run dev
 ```
-Open `http://localhost:3000`.
 
-### 5. (Optional) GitHub Sign-In
-1. Create an OAuth App at [github.com/settings/developers](https://github.com/settings/developers) → **New OAuth App**. Callback URL: `http://localhost:3000/api/auth/callback`.
-2. Add `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and any random 32+ character `SESSION_SECRET` to `.env.local`.
-3. Restart the dev server — **Connect GitHub** appears on the home page.
+Then open <http://localhost:3000>.
 
-### 6. (Optional) VS Code Extension
-Download the `.vsix` from [Releases](https://github.com/CashyO/SpitBall-ShellHacks/releases/tag/vscode-v0.7.0), then **Extensions: Install from VSIX…** in VS Code, or:
+Out of the box `.env.local` has `MOCK_MODE=true`, which runs with **no keys at all** and shows a sample map. When you're ready for real repos, set `GEMINI_API_KEY`, `GEMINI_MODEL`, `MONGODB_URI` and `MOCK_MODE=false`. `.env.example` explains every variable, and `docs/ARCHITECTURE.md` §9 has the details.
+
+### GitHub sign-in (optional)
+
+1. Create an OAuth App at [github.com/settings/developers](https://github.com/settings/developers) → **New OAuth App**, with the callback URL `http://localhost:3000/api/auth/callback`.
+2. Add `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and a random `SESSION_SECRET` (32+ characters) to `.env.local`.
+3. Restart the dev server. A **Connect GitHub** button shows up on the home page.
+
+### The VS Code extension (optional)
+
+Grab the latest `.vsix` from [Releases](https://github.com/CashyO/SpitBall-ShellHacks/releases/latest) and install it with **Extensions: Install from VSIX…** in VS Code, or from a terminal:
+
 ```bash
-code --install-extension spitball-0.7.0.vsix
+code --install-extension spitball-<version>.vsix
 ```
-Needs the app running locally with `MOCK_MODE=false` and a working Gemini key. See [`vscode-extension/README.md`](vscode-extension/README.md).
 
-## 🎯 Usage
+It talks to the live site by default, so you don't need to run anything. To point it at your own copy, run `npm run dev` and set `spitball.url` to `http://localhost:3000`. More in [`vscode-extension/README.md`](vscode-extension/README.md).
 
-1. **Start the app** (`npm run dev`, port 3000)
-2. **Open your browser** to `http://localhost:3000`
-3. **Connect GitHub and pick a repo**, or click **Try demo**
-4. **Click any bubble** to see why it's grounded in your code — expand it, build it, or reject it with a reason
-5. **Build an idea** → review the diff → **Open PR** → merge on GitHub → watch the node turn green and new ideas sprout
+## Using it
 
-### Example Repository URLs
-- `https://github.com/expressjs/cors`
-- Any public repo, or your own once signed in
+1. Open the app (the live site, or `npm run dev` on port 3000).
+2. Connect GitHub and pick a repo, or hit **Try demo** to look around first.
+3. Click any bubble to see *why* it fits your code. From there you can expand it into smaller ideas, build it, or reject it with a reason.
+4. Build an idea, check the diff, and click **Open PR**. Merge it on GitHub, then watch the bubble turn green and new ideas sprout from it.
 
-## 🔧 API Endpoints
+No repo handy? Try `https://github.com/expressjs/cors`, or any public repo (or your own, once you're signed in).
 
-| Route | Does |
+## API
+
+| Route | What it does |
 |---|---|
-| `POST /api/analyze` | Snapshot a repo → Gemini analyze → save a new map |
-| `GET /api/maps/[id]` | Load a map |
-| `PATCH /api/maps/[id]` | Change a node's status (e.g. reject, with a reason) |
-| `POST /api/nodes` | Manually add an idea |
-| `POST /api/expand` | Generate 3–5 follow-up ideas for a node |
-| `POST /api/build` | Gemini writes the change; server computes the diff |
-| `POST /api/pr` | Open a real GitHub PR from the stored proposal |
-| `POST /api/sync` | Compare commits; mark shipped, detect new work, sprout ideas |
-| `GET /api/repos` | The signed-in user's repos, for the picker |
-| `POST /api/local/*` | The VS Code extension's equivalents — local files in, no GitHub involved |
+| `POST /api/analyze` | Snapshots a repo, asks Gemini for ideas, saves a new map |
+| `GET /api/maps/[id]` | Loads a map |
+| `PATCH /api/maps/[id]` | Changes a node's status (for example, reject it with a reason) |
+| `POST /api/nodes` | Adds an idea by hand |
+| `POST /api/expand` | Generates 3–5 follow-up ideas for a node |
+| `POST /api/build` | Gemini writes the change; the server computes the diff |
+| `POST /api/pr` | Opens a real GitHub PR from the stored proposal |
+| `POST /api/sync` | Checks new commits: marks ideas shipped, detects new work, sprouts ideas |
+| `GET /api/repos` | Lists the signed-in user's repos for the picker |
+| `POST /api/local/*` | The VS Code extension's versions of these: local files in, no GitHub involved |
 
-Full contract in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §6.
+The full contract is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §6.
 
-## 🎨 UI Components
+## Where things live in the UI
 
-- **`Graph` / `GraphCanvas`**: the force-directed mind map, custom canvas drawing
-- **`DetailPanel`**: an idea's rationale, files, diff, and every action (Build, Expand, Open PR, Reject)
-- **`DecisionsLog`**: every rejected idea, who rejected it, and why
-- **`BuildSelectedPanel`**: Ctrl/Cmd-click several ideas, build them all in one go
-- **`ActivityFeed`**: the map's event history, newest first
+- **`Graph` / `GraphCanvas`**: the mind map itself, force-directed, drawn on a canvas.
+- **`DetailPanel`**: everything about one idea: its rationale, files, diff, and the buttons (Build, Expand, Open PR, Reject).
+- **`DecisionsLog`**: every rejected idea, who rejected it and why.
+- **`BuildSelectedPanel`**: Ctrl/Cmd-click a few ideas and build them in one go.
+- **`ActivityFeed`**: what's happened on the map, newest first.
 
-## 🚨 Troubleshooting
+## When things go wrong
 
-### Common Issues
+**"MongoDB connection failed: Server selection timed out"**
+Your IP probably isn't on the Atlas allow list. In Atlas, open your cluster → **Connect** and add your current IP (for a hackathon, `0.0.0.0/0` is fine).
 
-1. **"MongoDB connection failed: Server selection timed out"**
-   - Your IP usually isn't on the Atlas allow list. In Atlas → your cluster → **Connect**, add your current IP (or allow `0.0.0.0/0` for a hackathon)
+**"Gemini rejected the API key"**
+The `GEMINI_API_KEY` is invalid or expired. Make a new one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and restart the dev server.
 
-2. **"Gemini rejected the API key"**
-   - `GEMINI_API_KEY` is invalid or expired — create a new one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and restart the dev server
+**Every repo shows the same sample map**
+You're still in mock mode. Set `MOCK_MODE=false` in `.env.local`.
 
-3. **Every repo shows the same sample map**
-   - `MOCK_MODE=true` — set it to `false` in `.env.local` for real repos
+**"redirect_uri is not associated with this application"**
+The callback URL on your OAuth App doesn't exactly match where the app is running (port, host, http vs https). Make a separate OAuth App for each environment.
 
-4. **"redirect_uri is not associated with this application"**
-   - Your OAuth App's callback URL doesn't exactly match where you're running the app (port, host, http vs https) — make a separate OAuth App per environment
+**"GitHub sign-in isn't set up on this server yet"**
+One of `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` or `SESSION_SECRET` is missing. The home page tells you which.
 
-5. **"GitHub sign-in isn't set up on this server yet"**
-   - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `SESSION_SECRET` aren't all set — the home page names exactly which one is missing
+Here's everything `.env.local` can hold:
 
-### Environment Variables
 ```bash
-# Required for real mode
+# Needed for real repos
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-flash-latest
 MONGODB_URI=your_mongodb_connection_string
@@ -143,26 +128,24 @@ MOCK_MODE=false
 
 # Optional
 GEMINI_FALLBACK_MODEL=      # used when the main model is overloaded
-GITHUB_TOKEN=                # shared service token; not needed once sign-in is set up
+GITHUB_TOKEN=               # shared service token; not needed once sign-in is set up
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 SESSION_SECRET=
 ```
 
-## 🤝 Contributing
+## Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes — `npm run build` must pass
-4. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §4 for file ownership and [`docs/index.md`](docs/index.md) for where everything lives
-5. Submit a pull request
+We'd love the help. Fork the repo, make a branch (`git checkout -b your-feature`), and make sure `npm run build` passes before you open a PR. Before you start, check [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §4 to see who owns which files, and [`docs/index.md`](docs/index.md) for where everything lives.
 
-## 📝 License
-Built for a hackathon — no license file yet.
+## License
 
-## 🎉 Team
-Built with ❤️ for ShellHacks 2026.
+We built this at a hackathon and haven't picked a license yet.
+
+## Who made it
+
+Our team built Spitball at ShellHacks 2026, mostly on too little sleep.
 
 ---
 
-**Docs**: start at [`docs/index.md`](docs/index.md) — it says where every kind of information lives. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) is the full technical spec; [`docs/CONTEXT.md`](docs/CONTEXT.md) is the why.
+**Want to dig deeper?** Start with [`docs/index.md`](docs/index.md), which points to where everything is. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) is the full technical spec, and [`docs/CONTEXT.md`](docs/CONTEXT.md) covers why we built it the way we did.
