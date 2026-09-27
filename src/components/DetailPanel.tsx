@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { buildNode, expandNode, openPr, setNodeStatus } from "@/lib/api-client";
-import type { CodeMap, IdeaNode, NodeStatus, NodeType } from "@/lib/types";
+import { buildNode, createNode, expandNode, openPr, setDependsOn, setNodeStatus, type NewNodeInput } from "@/lib/api-client";
+import type { CodeMap, Effort, IdeaNode, NodeStatus, NodeType } from "@/lib/types";
 import { expandLocalNode, isLocalMap } from "@/lib/local-client";
 import DiffView from "./DiffView";
+
+const EVENT_ICON: Record<string, string> = {
+  analyze: "◎", expand: "＋", build: "⚙", pr: "⇄", commit: "●",
+  ship: "✓", sprout: "✿", detect: "◆", error: "!", create: "✎", reject: "✕", link: "↝",
+};
 
 const TYPE_COLOR: Record<NodeType, string> = {
   feature: "#2E6BE6",
@@ -94,6 +99,70 @@ function Spinner() {
   return <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent align-[-2px]" />;
 }
 
+const input = "w-full rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700";
+
+/** Manually add an idea to the map — the "steer it yourself" counterpart to Gemini's suggestions. */
+function NewIdeaForm({
+  onCreate,
+  onCancel,
+}: {
+  onCreate: (draft: Omit<NewNodeInput, "mapId" | "parentId">) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [type, setType] = useState<NodeType>("feature");
+  const [effort, setEffort] = useState<Effort>("S");
+  const [files, setFiles] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <form
+      className="space-y-2 rounded-md border border-dashed border-neutral-300 p-3 dark:border-neutral-700"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!title.trim() || saving) return;
+        setSaving(true);
+        try {
+          await onCreate({
+            title: title.trim(),
+            description: description.trim() || undefined,
+            type,
+            effort,
+            files: files.split(",").map((f) => f.trim()).filter(Boolean),
+          });
+        } finally {
+          setSaving(false);
+        }
+      }}
+    >
+      <input className={input} placeholder="Idea title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+      <textarea className={`${input} resize-none`} rows={2} placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
+      <div className="flex gap-2">
+        <select className={input} value={type} onChange={(e) => setType(e.target.value as NodeType)}>
+          {(["feature", "improvement", "fix", "security", "test"] as NodeType[]).map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+        <select className={input} value={effort} onChange={(e) => setEffort(e.target.value as Effort)}>
+          {(["S", "M", "L"] as Effort[]).map((e) => (
+            <option key={e} value={e}>{e}</option>
+          ))}
+        </select>
+      </div>
+      <input className={input} placeholder="Files, comma separated (optional)" value={files} onChange={(e) => setFiles(e.target.value)} />
+      <div className="flex gap-2">
+        <button type="submit" className={primary} disabled={!title.trim() || saving}>
+          {saving ? <Spinner /> : "Add idea"}
+        </button>
+        <button type="button" className={secondary} onClick={onCancel} disabled={saving}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export default function DetailPanel({
   map,
   selectedId,
@@ -109,6 +178,8 @@ export default function DetailPanel({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [showNewIdea, setShowNewIdea] = useState(false);
+  const [addingDep, setAddingDep] = useState("");
 
   const node = map.nodes.find((n) => n.id === selectedId);
   // Local maps come from the VS Code extension: no GitHub, so no Build/PR, and file chips open in the editor.
@@ -127,6 +198,16 @@ export default function DetailPanel({
     } finally {
       setBusy(null);
       onBusyChange?.(false);
+    }
+  }
+
+  async function addIdea(draft: Omit<NewNodeInput, "mapId" | "parentId">, parentId: string | null) {
+    setError(null);
+    try {
+      onMapChange(await createNode({ mapId: map._id, parentId, ...draft }));
+      setShowNewIdea(false);
+    } catch (e) {
+      setError((e as Error).message);
     }
   }
 
@@ -167,6 +248,14 @@ export default function DetailPanel({
           ))}
         </div>
         <p className="text-xs text-neutral-500">Click an idea on the map to explore it.</p>
+        {error && <p className="rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
+        {showNewIdea ? (
+          <NewIdeaForm onCreate={(d) => addIdea(d, null)} onCancel={() => setShowNewIdea(false)} />
+        ) : (
+          <button className={secondary} onClick={() => setShowNewIdea(true)}>
+            ＋ Add idea
+          </button>
+        )}
       </div>
     );
   }
@@ -250,6 +339,59 @@ export default function DetailPanel({
         </p>
       )}
 
+      {node.status === "rejected" && (
+        <p className="rounded-md bg-neutral-100 p-2 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+          Rejected{node.rejectedBy ? ` by ${node.rejectedBy}` : ""}{node.rejectedNote ? `: ${node.rejectedNote}` : ""}
+        </p>
+      )}
+
+      {/* Manual dependency planning: order ideas without waiting on Gemini to notice the relationship. */}
+      <div className="space-y-1.5">
+        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Depends on</div>
+        {node.dependsOn && node.dependsOn.length > 0 ? (
+          <ul className="space-y-1">
+            {node.dependsOn.map((depId) => {
+              const dep = map.nodes.find((n) => n.id === depId);
+              return (
+                <li key={depId} className="flex items-center justify-between gap-2 text-xs">
+                  <span className={dep?.status === "shipped" ? "text-green-700 line-through dark:text-green-400" : ""}>
+                    {dep ? dep.title : "(removed idea)"}
+                  </span>
+                  <button
+                    className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                    onClick={() => run("deps", () => setDependsOn(map._id, node.id, node.dependsOn!.filter((id) => id !== depId)))}
+                  >
+                    remove
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-xs text-neutral-400">Nothing blocking this yet.</p>
+        )}
+        <div className="flex gap-2">
+          <select className={`${input} text-xs`} value={addingDep} onChange={(e) => setAddingDep(e.target.value)}>
+            <option value="">Add a dependency…</option>
+            {map.nodes
+              .filter((n) => n.id !== node.id && n.status !== "rejected" && !(node.dependsOn ?? []).includes(n.id))
+              .map((n) => (
+                <option key={n.id} value={n.id}>{n.title}</option>
+              ))}
+          </select>
+          <button
+            className={secondary}
+            disabled={!addingDep}
+            onClick={() => {
+              run("deps", () => setDependsOn(map._id, node.id, [...(node.dependsOn ?? []), addingDep]));
+              setAddingDep("");
+            }}
+          >
+            Add
+          </button>
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-2 pt-1">
         {node.status === "suggested" && !building && !local && (
           <>
@@ -292,11 +434,48 @@ export default function DetailPanel({
           {copied === "copied" ? "Copied!" : copied === "failed" ? "Copy failed" : "Copy prompt"}
         </button>
         {node.status === "suggested" && !building && (
-          <button className={`${secondary} text-neutral-500`} disabled={!!busy} onClick={() => run("reject", () => setNodeStatus(map._id, node.id, "rejected"))}>
+          <button
+            className={`${secondary} text-neutral-500`}
+            disabled={!!busy}
+            onClick={() => {
+              const note = window.prompt(`Reject "${node.title}"? Say why (optional) — teammates will see this in the activity feed.`);
+              if (note === null) return; // cancelled
+              run("reject", () => setNodeStatus(map._id, node.id, "rejected", note || undefined));
+            }}
+          >
             Reject
           </button>
         )}
       </div>
+
+      {showNewIdea ? (
+        <NewIdeaForm onCreate={(d) => addIdea(d, node.id)} onCancel={() => setShowNewIdea(false)} />
+      ) : (
+        <button className={secondary} onClick={() => setShowNewIdea(true)}>
+          ＋ Add idea under this one
+        </button>
+      )}
+
+      {/* Provenance timeline: this node's slice of the activity feed, so "why does this exist" doesn't require
+          scrolling the whole feed or asking a teammate who already looked into it. */}
+      {(() => {
+        const history = map.events.filter((e) => e.nodeId === node.id);
+        if (history.length === 0) return null;
+        return (
+          <div className="space-y-1 border-t border-neutral-200 pt-3 dark:border-neutral-800">
+            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">History</div>
+            <ul className="space-y-1 text-xs text-neutral-600 dark:text-neutral-400">
+              {history.map((e, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="w-4 shrink-0 text-center">{EVENT_ICON[e.kind] ?? "•"}</span>
+                  <span className="flex-1">{e.text}</span>
+                  <span className="shrink-0 text-neutral-400">{new Date(e.at).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
     </div>
   );
 }

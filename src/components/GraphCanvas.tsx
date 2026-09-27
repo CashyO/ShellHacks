@@ -33,6 +33,7 @@ interface GNode {
 interface GLink {
   source: string;
   target: string;
+  kind: "tree" | "depends"; // tree = parent/child; depends = manual "ships before" ordering
 }
 
 export default function GraphCanvas({
@@ -109,7 +110,13 @@ export default function GraphCanvas({
       g.files = n.files;
       nodes.push(g);
       // A parent can be missing (replay mid-way, rejected parent); hang the node off root instead of crashing.
-      links.push({ source: n.parentId && keep.has(n.parentId) ? n.parentId : "root", target: n.id });
+      links.push({ source: n.parentId && keep.has(n.parentId) ? n.parentId : "root", target: n.id, kind: "tree" });
+    }
+    // Manual dependency edges ("ships before"), drawn separately from the tree.
+    for (const n of visible) {
+      for (const depId of n.dependsOn ?? []) {
+        if (keep.has(depId)) links.push({ source: n.id, target: depId, kind: "depends" });
+      }
     }
     return { nodes, links };
   }, [map]);
@@ -270,11 +277,15 @@ export default function GraphCanvas({
           const br = fg.graph2ScreenCoords(bb.x[1], bb.y[1]);
           if (tl.x < 0 || tl.y < 0 || br.x > size.w || br.y > size.h) fg.zoomToFit(400, 70);
         }}
-        linkColor={() => muted}
+        linkColor={(l) => (l.kind === "depends" ? "#E8A317" : muted)}
+        linkLineDash={(l) => (l.kind === "depends" ? [3, 2] : null)}
+        linkDirectionalArrowLength={(l) => (l.kind === "depends" ? 4 : 0)}
+        linkDirectionalArrowColor={() => "#E8A317"}
+        linkDirectionalArrowRelPos={1}
         onNodeHover={(node) => {
           if (wrapRef.current) wrapRef.current.style.cursor = node ? "pointer" : "";
         }}
-        linkWidth={0.8}
+        linkWidth={(l) => (l.kind === "depends" ? 1 : 0.8)}
         nodeCanvasObjectMode={() => "replace"}
         nodeCanvasObject={drawNode}
         nodePointerAreaPaint={(node, color, ctx) => {

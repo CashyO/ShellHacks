@@ -16,8 +16,12 @@ export interface IdeaNode extends IdeaDraft {
   id: string;                 // nanoid
   parentId: string | null;    // null = attached to the root (codebase) node
   status: NodeStatus;
-  origin: "analyze" | "expand" | "sync" | "detected";
+  origin: "analyze" | "expand" | "sync" | "detected" | "manual";
   createdAt: string;          // ISO
+  createdBy?: string;         // GitHub login, for manually-added ideas
+  dependsOn?: string[];       // ids of other nodes that should ship first (manual planning, not enforced)
+  rejectedBy?: string;        // GitHub login who rejected it, if signed in
+  rejectedNote?: string;      // why, for teammates who see it later in the activity feed
   proposal?: Proposal;        // set by /api/build
   pr?: { number: number; url: string; branch: string };
   shippedCommit?: string;     // sha
@@ -35,7 +39,7 @@ export interface Proposal {
 
 export interface MapEvent {
   at: string;
-  kind: "analyze" | "expand" | "build" | "pr" | "commit" | "ship" | "sprout" | "detect" | "error";
+  kind: "analyze" | "expand" | "build" | "pr" | "commit" | "ship" | "sprout" | "detect" | "error" | "create" | "reject" | "link";
   text: string;               // human-readable line for the activity feed
   nodeId?: string;
   sha?: string;

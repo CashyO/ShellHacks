@@ -110,8 +110,12 @@ export interface IdeaNode extends IdeaDraft {
   id: string;                 // nanoid
   parentId: string | null;    // null = attached to the root (codebase) node
   status: NodeStatus;
-  origin: "analyze" | "expand" | "sync" | "detected";
+  origin: "analyze" | "expand" | "sync" | "detected" | "manual";
   createdAt: string;          // ISO
+  createdBy?: string;         // GitHub login, for manually-added ideas
+  dependsOn?: string[];       // ids of other nodes that should ship first (advisory, not enforced)
+  rejectedBy?: string;        // GitHub login who rejected it, if signed in
+  rejectedNote?: string;      // why, for teammates who see it later
   proposal?: Proposal;        // set by /api/build
   pr?: { number: number; url: string; branch: string };
   shippedCommit?: string;     // sha
@@ -129,7 +133,7 @@ export interface Proposal {
 
 export interface MapEvent {
   at: string;
-  kind: "analyze" | "expand" | "build" | "pr" | "commit" | "ship" | "sprout" | "detect" | "error";
+  kind: "analyze" | "expand" | "build" | "pr" | "commit" | "ship" | "sprout" | "detect" | "error" | "create" | "reject" | "link";
   text: string;               // human-readable line for the activity feed
   nodeId?: string;
   sha?: string;
@@ -158,11 +162,24 @@ All routes: JSON in, JSON out. Errors return `{ error: string }` with a 4xx/5xx 
 |---|---|---|---|
 | `POST /api/analyze` | `{ repoUrl }` | `{ map: CodeMap }` | Snapshot repo → Gemini analyze → save new map with 8–12 nodes |
 | `GET /api/maps/[id]` | – | `{ map: CodeMap }` | Load map |
-| `PATCH /api/maps/[id]` | `{ nodeId, status }` | `{ map }` | Manual status change (e.g. reject) |
+| `PATCH /api/maps/[id]` | `{ nodeId, status?, note?, dependsOn? }` | `{ map }` | `status` = manual status change; on `status: "rejected"`, `note` (optional) is recorded with the signed-in user's login as `rejectedBy`/`rejectedNote` and logged as a `reject` event. `dependsOn` (optional) replaces the node's full dependency list (ids of other nodes it should ship after), logged as a `link` event. Either or both may be sent in one call. |
+| `POST /api/nodes` | `{ mapId, title, type, effort, description?, rationale?, files?, parentId? }` | `{ map }` | Manually add an idea (steer the map yourself, not just accept AI suggestions). `origin: "manual"`, `status: "suggested"`; `createdBy` set from the signed-in user if any. Logged as a `create` event. |
 | `POST /api/expand` | `{ mapId, nodeId }` | `{ map }` | Gemini generates 3–5 children for node |
 | `POST /api/build` | `{ mapId, nodeId }` | `{ map }` | Fetch node's files fresh → Gemini writes full new file contents → server builds diff → store `node.proposal` |
 | `POST /api/pr` | `{ mapId, nodeId }` | `{ map }` | Uses stored proposal → branch `projectgraph/<nodeId>` → commit files → open PR → `status = "pr_open"` |
 | `POST /api/sync` | `{ mapId }` | `{ map, changed: boolean }` | Compare `lastSyncedSha...defaultBranch`. If new commits: mark shipped, detect new work, sprout ideas |
+
+### Manual planning (built)
+
+Not every idea has to come from Gemini, and not every ordering decision should wait for it to notice a relationship.
+`IdeaNode` carries `dependsOn?: string[]` (ids of nodes that should ship first — advisory, not enforced) and
+`createdBy?` / `rejectedBy?` / `rejectedNote?` for who did what. The graph (`GraphCanvas.tsx`) draws dependency
+edges as a thin dashed amber line with a small arrowhead pointing at the prerequisite, separate from the solid
+parent/child tree links — static, no hover animation (a "shares files" hover effect was removed for being
+distracting; don't reintroduce that pattern here). `DetailPanel.tsx` has the "＋ Add idea" form and the "Depends
+on" add/remove UI. Every node's activity-feed events (`create`, `reject`, `link`, plus the existing kinds) are
+also shown filtered to that node as a small "History" section in the panel — the provenance of a decision without
+scrolling the whole feed.
 
 ### GitHub sign-in and token handling (built)
 

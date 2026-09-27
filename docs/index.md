@@ -33,7 +33,7 @@
 ```
 src/app/page.tsx              landing page
 src/app/map/[id]/page.tsx     map page (graph + panels, polling)
-src/app/api/*/route.ts        analyze, maps/[id], expand, build, pr, sync
+src/app/api/*/route.ts        analyze, maps/[id], nodes (manual add), expand, build, pr, sync
 src/components/               Graph (+ GraphCanvas), Legend, DetailPanel, DiffView, ActivityFeed, Header
 src/lib/types.ts              shared contract
 src/lib/schemas.ts            zod + Gemini response schemas

@@ -75,9 +75,48 @@ export function mockAnalyze(): CodeMap {
   return saveMockMap(createMockMap());
 }
 
-export function mockPatch(mapId: string, nodeId: string, status: NodeStatus): CodeMap {
+export function mockPatch(
+  mapId: string,
+  nodeId: string,
+  patch: { status?: NodeStatus; note?: string; dependsOn?: string[] },
+): CodeMap {
   const { map, n } = need(mapId, nodeId);
-  n.status = status;
+  if (patch.status) {
+    n.status = patch.status;
+    if (patch.status === "rejected") {
+      n.rejectedNote = patch.note?.trim() || undefined;
+      ev(map, "reject", `Rejected "${n.title}"${n.rejectedNote ? `: ${n.rejectedNote}` : ""}`, n.id);
+    }
+  }
+  if (patch.dependsOn) {
+    const valid = new Set(map.nodes.map((x) => x.id));
+    n.dependsOn = [...new Set(patch.dependsOn)].filter((id) => id !== n.id && valid.has(id));
+    ev(map, "link", `"${n.title}" now depends on ${n.dependsOn.length} idea${n.dependsOn.length === 1 ? "" : "s"}`, n.id);
+  }
+  return saveMockMap(map);
+}
+
+export function mockCreateNode(
+  mapId: string,
+  draft: { title: string; description?: string; rationale?: string; type: IdeaDraft["type"]; effort: IdeaDraft["effort"]; files?: string[]; parentId?: string | null },
+): CodeMap {
+  const { map } = need(mapId);
+  if (draft.parentId && !map.nodes.some((n) => n.id === draft.parentId)) throw new Error("parentId does not exist on this map");
+  const n: IdeaNode = {
+    title: draft.title.trim(),
+    description: draft.description?.trim() || "Added by hand.",
+    rationale: draft.rationale?.trim() || "Added by a teammate, not suggested by Gemini.",
+    type: draft.type,
+    effort: draft.effort,
+    files: (draft.files ?? []).map((f) => f.trim()).filter(Boolean),
+    id: crypto.randomUUID().slice(0, 8),
+    parentId: draft.parentId ?? null,
+    status: "suggested",
+    origin: "manual",
+    createdAt: new Date().toISOString(),
+  };
+  map.nodes.push(n);
+  ev(map, "create", `Added "${n.title}" by hand`, n.id);
   return saveMockMap(map);
 }
 

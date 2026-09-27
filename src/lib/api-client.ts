@@ -1,4 +1,4 @@
-import type { CodeMap, NodeStatus } from "./types";
+import type { CodeMap, Effort, NodeStatus, NodeType } from "./types";
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -15,8 +15,25 @@ export const analyze = (repoUrl: string) =>
 
 export const getMap = (id: string) => call<{ map: CodeMap }>(`/api/maps/${id}`).then((r) => r.map);
 
-export const setNodeStatus = (mapId: string, nodeId: string, status: NodeStatus) =>
-  send<{ map: CodeMap }>("PATCH", `/api/maps/${mapId}`, { nodeId, status }).then((r) => r.map);
+export const setNodeStatus = (mapId: string, nodeId: string, status: NodeStatus, note?: string) =>
+  send<{ map: CodeMap }>("PATCH", `/api/maps/${mapId}`, { nodeId, status, note }).then((r) => r.map);
+
+export const setDependsOn = (mapId: string, nodeId: string, dependsOn: string[]) =>
+  send<{ map: CodeMap }>("PATCH", `/api/maps/${mapId}`, { nodeId, dependsOn }).then((r) => r.map);
+
+export interface NewNodeInput {
+  mapId: string;
+  title: string;
+  description?: string;
+  rationale?: string;
+  type: NodeType;
+  effort: Effort;
+  files?: string[];
+  parentId?: string | null;
+}
+
+export const createNode = (input: NewNodeInput) =>
+  send<{ map: CodeMap }>("POST", "/api/nodes", input).then((r) => r.map);
 
 export const expandNode = (mapId: string, nodeId: string) =>
   send<{ map: CodeMap }>("POST", "/api/expand", { mapId, nodeId }).then((r) => r.map);
