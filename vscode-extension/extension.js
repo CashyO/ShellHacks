@@ -80,14 +80,28 @@ async function findRepoRoot() {
 const head = () => git(["rev-parse", "HEAD"]).then((s) => s.trim()).catch(() => "");
 
 async function api(route, body) {
-  const res = await fetch(appUrl() + route, {
-    method: body ? "POST" : "GET",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status });
-  return data;
+  let res;
+  try {
+    res = await fetch(appUrl() + route, {
+      method: body ? "POST" : "GET",
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error(`Can't reach the ProjectGraph app at ${appUrl()}. Start it with \`npm run dev\` or check the projectgraph.url setting.`);
+  }
+  const data = await res.json().catch(() => null);
+  if (res.ok && data) return data;
+  if (data && data.error) throw Object.assign(new Error(data.error), { status: res.status });
+  // Every ProjectGraph route answers in JSON, so a non-JSON 404 means the server is an older version
+  // (no /api/local routes) or a different app is using that port.
+  if (res.status === 404) {
+    throw Object.assign(
+      new Error(`${appUrl()} has no ${route.split("?")[0]} route. Update the ProjectGraph app (git pull on main) and restart \`npm run dev\`, or check that nothing else is using that port.`),
+      { status: 404 },
+    );
+  }
+  throw Object.assign(new Error(`Request to ${route} failed (${res.status})`), { status: res.status });
 }
 
 /** Serializes background work so a commit sync and an idea request never race on the same map. */

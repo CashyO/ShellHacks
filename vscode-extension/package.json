@@ -2,9 +2,26 @@
   "name": "projectgraph",
   "displayName": "ProjectGraph",
   "description": "A living mind map of your local repo that grows with every commit and suggests ideas while you code.",
-  "version": "0.4.3",
+  "version": "0.5.1",
   "publisher": "projectgraph",
-  "license": "MIT",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CashyO/ShellHacks.git",
+    "directory": "vscode-extension"
+  },
+  "homepage": "https://github.com/CashyO/ShellHacks/tree/main/vscode-extension#readme",
+  "bugs": {
+    "url": "https://github.com/CashyO/ShellHacks/issues"
+  },
+  "keywords": [
+    "mind map",
+    "ideas",
+    "ai",
+    "gemini",
+    "git",
+    "planning"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },

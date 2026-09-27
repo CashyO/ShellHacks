@@ -15,6 +15,19 @@ checkout and sends it to the ProjectGraph app (`/api/local/*`), which uses Gemin
 - Click a file on an idea's detail panel to open it in the editor. **Expand** works on local maps too.
   Build it / Open PR are hidden for local maps: you build in your editor and commit.
 
+## Install
+
+Download `projectgraph-<version>.vsix` from the
+[Releases page](https://github.com/CashyO/ShellHacks/releases), then in VS Code run
+**Extensions: Install from VSIX…** (⌘⇧P / Ctrl+Shift+P) and pick the file. Or from a terminal:
+
+```bash
+code --install-extension projectgraph-0.5.1.vsix
+```
+
+The extension is a front end: it needs the ProjectGraph app running (next section). Your code snippets and
+diffs are sent to that app, which sends them to Gemini.
+
 ## Use it
 
 1. Start the app in the repo root with `npm run dev`. `.env.local` needs `MOCK_MODE=false` and a Gemini key.
@@ -24,7 +37,8 @@ checkout and sends it to the ProjectGraph app (`/api/local/*`), which uses Gemin
 
 | Command | What it does |
 |---|---|
-| ProjectGraph: Open Map | Opens the map for this repo (offers to create it) |
+| ProjectGraph: Open Map | Opens the map for this repo in an editor tab (offers to create it) |
+| ProjectGraph: Show Map in Sidebar | Opens the Mind Map view (drag it to the secondary side bar) |
 | ProjectGraph: Map This Repository | Creates a new map from the current files |
 | ProjectGraph: Suggest Ideas From My Changes | Asks for ideas now, skipping the wait |
 | ProjectGraph: Open Map in Browser | Opens the same map outside VS Code |
@@ -38,5 +52,5 @@ errors.
 Press **F5** in this folder to run it in a test window. To build an installable file:
 
 ```bash
-cd vscode-extension && npx @vscode/vsce package --no-dependencies --allow-missing-repository --skip-license
+cd vscode-extension && npx @vscode/vsce package --no-dependencies --skip-license
 ```

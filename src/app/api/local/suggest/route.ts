@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMap, saveMap } from "@/lib/db";
 import { generateJSON } from "@/lib/gemini";
-import { describeError } from "@/lib/github";
-import { loadTree, localGuard, saveTree } from "@/lib/local";
+import { describeLocalError, loadTree, localGuard, saveTree } from "@/lib/local";
 import { dropDuplicateTitles, filterByTree, toNode } from "@/lib/schemas";
 import { type Focus, suggestPrompt, SuggestJson, SuggestSchema } from "@/lib/suggest";
 
@@ -51,7 +50,7 @@ export async function POST(req: Request) {
     const saved = added.length ? await saveMap(map) : map;
     return NextResponse.json({ map: saved, added, thought: result.thought });
   } catch (e) {
-    const { status, message } = describeError(e);
+    const { status, message } = describeLocalError(e);
     return NextResponse.json({ error: message }, { status });
   }
 }

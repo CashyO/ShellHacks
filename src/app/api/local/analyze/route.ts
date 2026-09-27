@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { saveMap } from "@/lib/db";
 import { generateJSON } from "@/lib/gemini";
-import { describeError } from "@/lib/github";
-import { LOCAL_OWNER, localGuard, saveTree } from "@/lib/local";
+import { describeLocalError, LOCAL_OWNER, localGuard, saveTree } from "@/lib/local";
 import * as prompts from "@/lib/prompts";
 import { AnalyzeJson, AnalyzeSchema, filterByTree, newId, toNode } from "@/lib/schemas";
 import type { CodeMap } from "@/lib/types";
@@ -49,7 +48,7 @@ export async function POST(req: Request) {
     await saveTree(map._id, tree);
     return NextResponse.json({ map: await saveMap(map) });
   } catch (e) {
-    const { status, message } = describeError(e);
+    const { status, message } = describeLocalError(e);
     return NextResponse.json({ error: message }, { status });
   }
 }
