@@ -30,15 +30,18 @@ Download `spitball-<version>.vsix` from the
 code --install-extension spitball-0.7.0.vsix
 ```
 
-The extension is a front end: it needs the Spitball app running (next section). Your code snippets and
-diffs are sent to that app, which sends them to Gemini.
+The extension is a front end for the Spitball app, which by default is the live site (see below). Your code
+snippets and diffs are sent to that app, which sends them to Gemini.
 
 ## Use it
 
-1. Start the app in the repo root with `npm run dev`. `.env.local` needs `MOCK_MODE=false` and a Gemini key.
-2. Open your project folder (a git repo) in VS Code.
-3. Click **Spitball** in the status bar, then **Map This Repository**.
-4. Code, pause, commit, and watch the map grow.
+1. Open your project folder (a git repo) in VS Code.
+2. Click **Spitball** in the status bar, then **Map This Repository**.
+3. Code, pause, commit, and watch the map grow.
+
+By default the extension uses the live site, <https://shellhacks-projectgraph-qrx89.ondigitalocean.app>, so
+there's nothing to run. To use your own copy of the app instead, run `npm run dev` in the repo root
+(`.env.local` needs `MOCK_MODE=false` and a Gemini key) and set `spitball.url` to `http://localhost:3000`.
 
 | Command | What it does |
 |---|---|

@@ -6,6 +6,9 @@
 - **Renamed to Spitball.** New extension ID `spitball.spitball`; commands, sidebar and settings are now
   `Spitball` / `spitball.*`. Uninstall the old "ProjectGraph" extension after installing this one.
 - Old `projectgraph.*` settings are still read if the new `spitball.*` ones aren't set.
+- `spitball.url` now defaults to the live site (https://shellhacks-projectgraph-qrx89.ondigitalocean.app),
+  so nothing needs to run locally. Set it to `http://localhost:3000` to use your own `npm run dev`.
+- Clearer error when the app at `spitball.url` is older than the extension.
 
 ### Features
 - **Spitball: Connect Existing Map**: attach a repo to a map you already have by pasting its link or id.

@@ -66,8 +66,16 @@ function cfg(key, def) {
   if (set !== undefined) return set;
   return vscode.workspace.getConfiguration("projectgraph").get(key, def);
 }
-const appUrl = () => cfg("url", "http://localhost:3000").replace(/\/+$/, "");
-const mapId = () => ctx.workspaceState.get(MAP_KEY);
+// The live Spitball site by default; set spitball.url to http://localhost:3000 when running the app yourself.
+const DEFAULT_URL = "https://shellhacks-projectgraph-qrx89.ondigitalocean.app";
+const appUrl = () => cfg("url", DEFAULT_URL).replace(/\/+$/, "");
+// Maps live in the app's database, so remember them per server: a map made on localhost doesn't exist on
+// the live site. (Before this, one key held the id; it's still honored for localhost.)
+const mapKey = () => `${MAP_KEY}@${appUrl()}`;
+const mapId = () =>
+  ctx.workspaceState.get(mapKey()) ??
+  (/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(appUrl()) ? ctx.workspaceState.get(MAP_KEY) : undefined);
+const setMapId = (id) => ctx.workspaceState.update(mapKey(), id);
 
 /** Runs git; `okCodes` lets `git diff --no-index` (exit 1 = "differences found") count as success. */
 function git(args, { cwd = repoRoot, okCodes = [0] } = {}) {
@@ -101,7 +109,7 @@ async function api(route, body) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new Error(`Can't reach the Spitball app at ${appUrl()}. Start it with \`npm run dev\` or check the spitball.url setting.`);
+    throw new Error(`Can't reach the Spitball app at ${appUrl()}. Check your internet connection, or the spitball.url setting (use http://localhost:3000 with \`npm run dev\`).`);
   }
   const data = await res.json().catch(() => null);
   if (res.ok && data) return data;
@@ -110,7 +118,7 @@ async function api(route, body) {
   // (no /api/local routes) or a different app is using that port.
   if (res.status === 404) {
     throw Object.assign(
-      new Error(`${appUrl()} has no ${route.split("?")[0]} route. Update the Spitball app (git pull on main) and restart \`npm run dev\`, or check that nothing else is using that port.`),
+      new Error(`${appUrl()} has no ${route.split("?")[0]} route yet: this extension is newer than the app there. The live site gets it after its next deploy; if you run the app yourself, update it (git pull) and restart \`npm run dev\`.`),
       { status: 404 },
     );
   }
@@ -293,7 +301,7 @@ async function mapRepository() {
       { location: vscode.ProgressLocation.Notification, title: `Spitball: mapping ${path.basename(repoRoot)} with Gemini…` },
       async () => api("/api/local/analyze", await snapshot()),
     );
-    await ctx.workspaceState.update(MAP_KEY, map._id);
+    await setMapId(map._id);
     lastHead = map.lastSyncedSha;
     if (sidebar) loadInto(sidebar.webview);
     if (panel || !sidebar) showPanel(true);
@@ -307,14 +315,14 @@ async function connectMap() {
   const input = await vscode.window.showInputBox({
     title: "Spitball: Connect Existing Map",
     prompt: "Paste the map link (…/map/<id>) or just the map id",
-    placeHolder: "http://localhost:3000/map/6966d18e",
+    placeHolder: `${appUrl()}/map/…`,
     ignoreFocusOut: true,
   });
   if (!input) return;
   const id = (input.trim().match(/\/map\/([A-Za-z0-9_-]+)/) || [])[1] || input.trim();
   try {
     const { map } = await api(`/api/maps/${encodeURIComponent(id)}`);
-    await ctx.workspaceState.update(MAP_KEY, map._id);
+    await setMapId(map._id);
     lastHead = await head();
     if (sidebar) loadInto(sidebar.webview);
     if (panel || !sidebar) showPanel(true);

@@ -73,8 +73,8 @@
       "properties": {
         "spitball.url": {
           "type": "string",
-          "default": "http://localhost:3000",
-          "description": "Where the Spitball app is running."
+          "default": "https://shellhacks-projectgraph-qrx89.ondigitalocean.app",
+          "description": "Where the Spitball app is running. Defaults to the live site; use http://localhost:3000 when running the app yourself with npm run dev."
         },
         "spitball.passiveIdeas": {
           "type": "boolean",
