@@ -74,7 +74,13 @@ Without sign-in, the app falls back to a shared `GITHUB_TOKEN` for public-repo r
 
 ### VS Code extension
 
-A `.vsix` isn't published yet — build it yourself:
+Download the `.vsix` from [Releases](https://github.com/CashyO/ShellHacks/releases/tag/vscode-v0.5.1), then in VS Code run **Extensions: Install from VSIX…**, or:
+
+```bash
+code --install-extension spitball-0.5.1.vsix
+```
+
+To build it yourself instead:
 
 ```bash
 cd vscode-extension
