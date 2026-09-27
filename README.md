@@ -71,9 +71,9 @@ Open `http://localhost:3000`.
 3. Restart the dev server — **Connect GitHub** appears on the home page.
 
 ### 6. (Optional) VS Code Extension
-Download the `.vsix` from [Releases](https://github.com/CashyO/ShellHacks/releases/tag/vscode-v0.5.1), then **Extensions: Install from VSIX…** in VS Code, or:
+Download the `.vsix` from [Releases](https://github.com/CashyO/SpitBall-ShellHacks/releases/tag/vscode-v0.7.0), then **Extensions: Install from VSIX…** in VS Code, or:
 ```bash
-code --install-extension spitball-0.5.1.vsix
+code --install-extension spitball-0.7.0.vsix
 ```
 Needs the app running locally with `MOCK_MODE=false` and a working Gemini key. See [`vscode-extension/README.md`](vscode-extension/README.md).
 
