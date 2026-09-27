@@ -141,10 +141,20 @@ Nobody sleeps during Phases 1–2, since that's when the seams are built. Take *
 
 ## Demo script (≈3 min)
 
+Real repo, real Gemini calls, all pre-cached (see "AI cache" below) so the demo doesn't depend on Gemini's mood on stage.
+Exact idea titles are regenerated per analyze and may drift slightly if the repo or prompts change — glance at the
+live map before presenting and swap in whatever the current title is; the beats below don't depend on exact wording.
+
 1. The problem: vibe coders keep asking the AI "what next?" and lose ideas in chat history.
-2. Paste the demo repo; the map blooms. Point at an idea that names a real file.
-3. Expand "Pomodoro timer" → children sprout.
-4. Build "Validate POST /events" (security) → diff → Open PR → show the real PR on GitHub.
+2. Paste the demo repo (`chronos-scheduler`); the map blooms with ~9 ideas. Point at **"Sanitize event input titles"**
+   (security) and read its rationale aloud — it names `server/index.js` passing raw title strings into `server/db.js`.
+3. Expand **"Sanitize event input titles"** → 4 children sprout, including "Enforce backend payload string
+   sanitization" and "Configure Content Security Policy headers."
+4. Build **"Sanitize event input titles"** → diff on `src/calendar.jsx` → Open PR → show the real PR on GitHub.
 5. Merge on GitHub → back in the app the node turns green and new ideas sprout.
 6. A teammate pushes a hand-written commit → the map detects it and grows from it.
 7. Close: "Your codebase becomes a map you steer, not a chat you type into."
+
+**AI cache:** all 9 top-level ideas on the demo repo have cached Build results, and "Sanitize event input titles" has
+a cached Expand too, so steps 2–4 run instantly with `AI_CACHE=on`. If the repo or prompts change, re-run analyze +
+build (all nodes) + expand (the security node) once before presenting to refresh the cache.

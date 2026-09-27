@@ -45,10 +45,12 @@ If only one thing works on stage, it must be **merge → green → sprout**. Tha
 `docs/prototype.html` is a clickable HTML/JS mock with simulated data. Open it in a browser. It shows the intended look, node states (suggested dashed / PR-open pulsing / shipped green), the detail panel, diff preview, activity feed, root progress ring, and the full loop. Match its interactions; the example ideas in its `IDEAS` object are good fixture data for `src/lib/mock.ts`.
 
 ## Demo script (~3 min)
+
+See `docs/PLAN.md` for the current, kept-in-sync version with exact idea titles and cache notes. Short form:
 1. The problem (15 s).
 2. Paste the demo repo URL; the map blooms. Point at an idea citing a real file.
 3. Expand a node → children sprout.
-4. Build "Validate POST /events" → diff → Open PR → show the real PR on GitHub.
+4. Build the security idea → diff → Open PR → show the real PR on GitHub.
 5. Merge on GitHub → the node turns green in the app, and new ideas sprout.
 6. Teammate pushes a hand-written commit → the map detects it and grows.
 7. Close: "Your codebase becomes a map you steer, not a chat you type into."
