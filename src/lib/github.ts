@@ -39,7 +39,7 @@ const octo = (token?: string) => {
   const isServiceToken = !!auth && auth === process.env.GITHUB_TOKEN;
   return new Octokit({
     auth,
-    userAgent: "projectgraph",
+    userAgent: "spitball",
     request: isServiceToken
       ? {
           fetch: async (url: string | URL | Request, init?: RequestInit) => {
@@ -228,7 +228,7 @@ export async function createPullRequest(args: {
 }): Promise<{ number: number; url: string; branch: string }> {
   const { owner, name, defaultBranch, nodeId, proposal, token } = args;
   const o = octo(token);
-  const branch = `projectgraph/${nodeId}`;
+  const branch = `spitball/${nodeId}`;
 
   const access = await getRepoAccess(owner, name, token);
   if (!access.canWrite) {
@@ -268,7 +268,7 @@ export async function createPullRequest(args: {
       title: proposal.prTitle,
       head: branch,
       base: defaultBranch,
-      body: `${proposal.prBody}\n\n---\nOpened by ProjectGraph.`,
+      body: `${proposal.prBody}\n\n---\nOpened by Spitball.`,
     });
     return { number: pr.data.number, url: pr.data.html_url, branch };
   } catch (e) {

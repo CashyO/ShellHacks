@@ -1,4 +1,4 @@
-# ProjectGraph — Project Context & Decisions
+# Spitball — Project Context & Decisions
 
 Background for anyone (human or agent) joining mid-hackathon. The *what to build* lives in ARCHITECTURE.md and the *when* in PLAN.md. This file explains *why*.
 
@@ -9,7 +9,7 @@ Background for anyone (human or agent) joining mid-hackathon. The *what to build
 - Deliberately skipped: Assurant, Snowflake, Building Together (it pulled the product toward a generic project-management tool).
 
 ## Pitch (final)
-> Vibe coding is fast, but you're always asking the AI "what should I build next?" and losing ideas in chat history. ProjectGraph watches your GitHub repo and grows a living mind map of your project: every push turns finished ideas green and sprouts new ones built on what you just wrote. Click any bubble, preview the change, and it opens a real pull request for you. Your codebase becomes a map you steer, not a chat you type into.
+> Vibe coding is fast, but you're always asking the AI "what should I build next?" and losing ideas in chat history. Spitball watches your GitHub repo and grows a living mind map of your project: every push turns finished ideas green and sprouts new ones built on what you just wrote. Click any bubble, preview the change, and it opens a real pull request for you. Your codebase becomes a map you steer, not a chat you type into.
 
 ## Problem → Solution
 - **Problem:** Vibe coders and student builders can generate code fast but lose the big picture. They don't know what to build next, ideas die in chat history, and nothing tracks what shipped.
@@ -21,12 +21,12 @@ Background for anyone (human or agent) joining mid-hackathon. The *what to build
 If only one thing works on stage, it must be **merge → green → sprout**. That is what separates us from every alternative.
 
 ## Differentiation (for Q&A)
-- **vs Miro / NotebookLM:** they make pictures of information you give them. ProjectGraph is wired to a live codebase in both directions: code → map (sync) and map → code (PRs). "Miro and NotebookLM map what you know. ProjectGraph maps what your code could become, then builds it."
+- **vs Miro / NotebookLM:** they make pictures of information you give them. Spitball is wired to a live codebase in both directions: code → map (sync) and map → code (PRs). "Miro and NotebookLM map what you know. Spitball maps what your code could become, then builds it."
 - **vs "just use Miro's MCP with Claude Code":** that gives a one-off snapshot. It doesn't update on push, the stickies carry no status/PR/commit state, and clicking a sticky does nothing. The product is the wiring, done automatically.
 - **vs Cursor / Claude Code / Copilot:** they're chat-driven and optimized for the next edit. We're optimized for the next decision, and we sit in front of them (Copy-prompt / PR handoff).
 - **vs Linear / GitHub Projects:** roadmaps written and updated by hand, blind to the code.
 - **Moat = suggestion quality.** Every idea must cite a real file or function. Generic ideas ("add dark mode") kill the demo.
-- Future/roadmap line: ProjectGraph could expose its own MCP server so coding agents read and update the map.
+- Future/roadmap line: Spitball could expose its own MCP server so coding agents read and update the map.
 
 ## Key decisions and why
 | Decision | Why |

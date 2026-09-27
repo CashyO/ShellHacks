@@ -263,7 +263,7 @@ async function currentFocus(full = false) {
 
 /** Sends a message to every open copy of the map (editor tab and/or sidebar view). */
 const post = (msg) => [panel && panel.webview, sidebar && sidebar.webview].forEach((w) => w && w.postMessage(msg));
-const pushAgent = () => post({ type: "projectgraph:agent", agent });
+const pushAgent = () => post({ type: "spitball:agent", agent });
 
 /** Cursor moved or editor changed: update the live panel (cheap, no AI) and restart the idle timer. */
 function onFocusChanged(restartIdle) {
@@ -380,26 +380,26 @@ const sidebarProvider = {
 
 /** Messages the map page sends up through the webview (see src/app/map/[id]/page.tsx and DetailPanel). */
 async function onPageMessage(msg) {
-  if (msg && msg.type === "projectgraph:ready") {
-    post({ type: "projectgraph:hello", version: ctx.extension.packageJSON.version, features: FEATURES });
+  if (msg && msg.type === "spitball:ready") {
+    post({ type: "spitball:hello", version: ctx.extension.packageJSON.version, features: FEATURES });
     return pushAgent();
   }
   // Webview frames can't always use the browser clipboard, so the page asks VS Code to copy instead.
-  if (msg && msg.type === "projectgraph:copy" && typeof msg.text === "string") {
+  if (msg && msg.type === "spitball:copy" && typeof msg.text === "string") {
     await vscode.env.clipboard.writeText(msg.text);
-    return post({ type: "projectgraph:copied" });
+    return post({ type: "spitball:copied" });
   }
-  if (msg && (msg.type === "projectgraph:build" || msg.type === "projectgraph:review") && typeof msg.nodeId === "string") {
-    return buildIdea(msg.nodeId, msg.type === "projectgraph:review");
+  if (msg && (msg.type === "spitball:build" || msg.type === "spitball:review") && typeof msg.nodeId === "string") {
+    return buildIdea(msg.nodeId, msg.type === "spitball:review");
   }
-  if (msg && msg.type === "projectgraph:openFiles" && Array.isArray(msg.paths)) {
+  if (msg && msg.type === "spitball:openFiles" && Array.isArray(msg.paths)) {
     const paths = msg.paths.filter((p) => typeof p === "string");
     const missing = [];
     for (const p of paths) if (!(await openFile(p, false))) missing.push(p);
     // Tell the page too: a corner notification alone is easy to miss.
-    return post({ type: "projectgraph:openResult", nodeId: msg.nodeId, opened: paths.length - missing.length, missing });
+    return post({ type: "spitball:openResult", nodeId: msg.nodeId, opened: paths.length - missing.length, missing });
   }
-  if (!msg || msg.type !== "projectgraph:openFile" || typeof msg.path !== "string" || !repoRoot) return;
+  if (!msg || msg.type !== "spitball:openFile" || typeof msg.path !== "string" || !repoRoot) return;
   if (!(await openFile(msg.path, false))) {
     vscode.window.showInformationMessage(`Spitball: ${msg.path} doesn't exist yet; this idea would create it.`);
   }
@@ -426,7 +426,7 @@ function readCurrent(abs) {
   return fs.existsSync(abs) ? fs.readFileSync(abs, "utf8") : null;
 }
 
-const buildStatus = (nodeId, state, message) => post({ type: "projectgraph:buildStatus", nodeId, state, message });
+const buildStatus = (nodeId, state, message) => post({ type: "spitball:buildStatus", nodeId, state, message });
 
 /**
  * Build it: Gemini writes the change from the idea's current files (or reuse the stored proposal when
@@ -523,7 +523,7 @@ async function applyProposal(node, changes) {
   setStatus("$(check) Spitball: change applied", `"${node.title}" applied; commit when it works`, 10000);
 }
 
-const refresh = (select) => post({ type: "projectgraph:refresh", select });
+const refresh = (select) => post({ type: "spitball:refresh", select });
 
 function placeholder() {
   return `<!DOCTYPE html>
@@ -567,7 +567,7 @@ function html(src, origin) {
     const frame = document.getElementById("app");
     const ORIGIN = ${JSON.stringify(origin)};
     window.addEventListener("message", (e) => {
-      if (!e.data || typeof e.data.type !== "string" || !e.data.type.startsWith("projectgraph:")) return;
+      if (!e.data || typeof e.data.type !== "string" || !e.data.type.startsWith("spitball:")) return;
       if (e.source === frame.contentWindow) {
         if (e.origin === ORIGIN) vscode.postMessage(e.data);
       } else {

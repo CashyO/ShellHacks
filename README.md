@@ -1,14 +1,14 @@
-# ProjectGraph
+# Spitball
 
 **Your codebase becomes a map you steer, not a chat you type into.**
 
-ProjectGraph turns a GitHub repo into a living mind map of what to build next — grounded in your actual files, respecting the conventions your team already wrote down, updated by your commits, and executable: click a bubble and get a real pull request.
+Spitball turns a GitHub repo into a living mind map of what to build next — grounded in your actual files, respecting the conventions your team already wrote down, updated by your commits, and executable: click a bubble and get a real pull request.
 
 ## Why not just prompt Claude Code?
 
 For "fix this one thing right now," a chat tool wins — it's more flexible and there's no context switch. That's not what this replaces.
 
-What a chat session can't do is **remember, across time and across people, what your team already decided.** Every idea Claude Code has ever suggested you, and every time you said "no, not like that, because X," evaporates the moment the terminal closes. ProjectGraph writes that down automatically:
+What a chat session can't do is **remember, across time and across people, what your team already decided.** Every idea Claude Code has ever suggested you, and every time you said "no, not like that, because X," evaporates the moment the terminal closes. Spitball writes that down automatically:
 
 - **A decision log that isn't a Slack thread nobody can find.** Reject an idea and say why — it's attributed and permanent, visible to every teammate, in the [**Decisions**](#decisions-log) view. Nobody re-litigates a call someone already made.
 - **It runs without being asked.** Push a commit and the map updates on its own — merged PRs turn ideas green, and new ideas sprout from what just shipped. A chat session only ever answers when you type into it.
@@ -74,12 +74,18 @@ Without sign-in, the app falls back to a shared `GITHUB_TOKEN` for public-repo r
 
 ### VS Code extension
 
-A `.vsix` isn't published yet — build it yourself:
+Download the `.vsix` from [Releases](https://github.com/CashyO/ShellHacks/releases/tag/vscode-v0.5.1), then in VS Code run **Extensions: Install from VSIX…**, or:
+
+```bash
+code --install-extension spitball-0.5.1.vsix
+```
+
+To build it yourself instead:
 
 ```bash
 cd vscode-extension
 npx @vscode/vsce package --no-dependencies --skip-license
-code --install-extension projectgraph-*.vsix
+code --install-extension spitball-*.vsix
 ```
 
 Needs the app running (`npm run dev`, `MOCK_MODE=false`, a working Gemini key). See [`vscode-extension/README.md`](vscode-extension/README.md).

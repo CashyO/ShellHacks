@@ -49,7 +49,7 @@ function copyViaVsCode(text: string): Promise<boolean> {
   if (window.parent === window) return Promise.resolve(false);
   return new Promise((resolve) => {
     const onMessage = (e: MessageEvent) => {
-      if (e.source !== window.parent || e.data?.type !== "projectgraph:copied") return;
+      if (e.source !== window.parent || e.data?.type !== "spitball:copied") return;
       window.removeEventListener("message", onMessage);
       clearTimeout(timer);
       resolve(true);
@@ -60,7 +60,7 @@ function copyViaVsCode(text: string): Promise<boolean> {
       resolve(false);
     }, 800);
     window.addEventListener("message", onMessage);
-    window.parent.postMessage({ type: "projectgraph:copy", text }, "*");
+    window.parent.postMessage({ type: "spitball:copy", text }, "*");
   });
 }
 
@@ -95,7 +95,7 @@ function copyPrompt(map: CodeMap, node: IdeaNode) {
 let vsCodeFeatures: string[] | null = null;
 if (typeof window !== "undefined" && window.parent !== window) {
   window.addEventListener("message", (e) => {
-    if (e.source === window.parent && e.data?.type === "projectgraph:hello" && Array.isArray(e.data.features)) {
+    if (e.source === window.parent && e.data?.type === "spitball:hello" && Array.isArray(e.data.features)) {
       vsCodeFeatures = e.data.features;
     }
   });
@@ -196,7 +196,7 @@ export default function DetailPanel({
   const local = isLocalMap(map);
   const embedded = typeof window !== "undefined" && window.parent !== window;
   const toVsCode = (msg: object) => window.parent.postMessage(msg, "*");
-  const openInEditor = (path: string) => toVsCode({ type: "projectgraph:openFile", path });
+  const openInEditor = (path: string) => toVsCode({ type: "spitball:openFile", path });
   // Build progress for this idea, reported by the VS Code extension (building → review → applied).
   const [vsBuild, setVsBuild] = useState<{ state: string; message: string } | null>(null);
   // What the running extension supports (null = it hasn't said, i.e. an older build that predates the handshake).
@@ -209,8 +209,8 @@ export default function DetailPanel({
     if (!local || window.parent === window) return;
     const onMessage = (e: MessageEvent) => {
       if (e.source !== window.parent) return;
-      if (e.data?.type === "projectgraph:hello" && Array.isArray(e.data.features)) setVsFeatures(e.data.features);
-      if (e.data?.type === "projectgraph:openResult" && e.data.nodeId === selectedId && Array.isArray(e.data.missing)) {
+      if (e.data?.type === "spitball:hello" && Array.isArray(e.data.features)) setVsFeatures(e.data.features);
+      if (e.data?.type === "spitball:openResult" && e.data.nodeId === selectedId && Array.isArray(e.data.missing)) {
         const missing = e.data.missing as string[];
         const opened = Number(e.data.opened) || 0;
         setVsBuild(
@@ -222,7 +222,7 @@ export default function DetailPanel({
             : { state: "info", message: `Opened ${opened} file${opened === 1 ? "" : "s"} in the editor.` },
         );
       }
-      if (e.data?.type !== "projectgraph:buildStatus" || e.data.nodeId !== selectedId) return;
+      if (e.data?.type !== "spitball:buildStatus" || e.data.nodeId !== selectedId) return;
       setVsBuild({ state: String(e.data.state), message: String(e.data.message ?? "") });
     };
     window.addEventListener("message", onMessage);
@@ -404,15 +404,15 @@ export default function DetailPanel({
           <>
             {node.proposal ? (
               <>
-                <button className={primary} onClick={() => (outdated("review") ? needReload() : toVsCode({ type: "projectgraph:review", nodeId: node.id }))}>
+                <button className={primary} onClick={() => (outdated("review") ? needReload() : toVsCode({ type: "spitball:review", nodeId: node.id }))}>
                   Review in VS Code
                 </button>
-                <button className={secondary} onClick={() => (outdated("build") ? needReload() : toVsCode({ type: "projectgraph:build", nodeId: node.id }))}>
+                <button className={secondary} onClick={() => (outdated("build") ? needReload() : toVsCode({ type: "spitball:build", nodeId: node.id }))}>
                   Rebuild
                 </button>
               </>
             ) : (
-              <button className={primary} onClick={() => (outdated("build") ? needReload() : toVsCode({ type: "projectgraph:build", nodeId: node.id }))}>
+              <button className={primary} onClick={() => (outdated("build") ? needReload() : toVsCode({ type: "spitball:build", nodeId: node.id }))}>
                 Build it
               </button>
             )}
@@ -421,7 +421,7 @@ export default function DetailPanel({
         {local && embedded && (
           <button
             className={secondary}
-            onClick={() => (outdated("openFiles") ? needReload() : toVsCode({ type: "projectgraph:openFiles", nodeId: node.id, paths: node.files }))}
+            onClick={() => (outdated("openFiles") ? needReload() : toVsCode({ type: "spitball:openFiles", nodeId: node.id, paths: node.files }))}
           >
             Open files
           </button>

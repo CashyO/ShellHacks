@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ProjectGraph",
+  title: "Spitball",
   description: "Turn your GitHub repo into a living map of what to build next.",
 };
 

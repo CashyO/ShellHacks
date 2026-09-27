@@ -1,4 +1,4 @@
-# ProjectGraph — Index
+# Spitball — Index
 
 **Start here.** This file says where every kind of information lives. Humans and coding agents: find your question below, read *only* that source, then work.
 

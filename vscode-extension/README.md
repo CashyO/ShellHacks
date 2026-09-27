@@ -18,7 +18,7 @@ checkout and sends it to the Spitball app (`/api/local/*`), which uses Gemini.
 
 ## Install
 
-> **Upgrading from ProjectGraph (0.6.x or earlier)?** The extension was renamed, so VS Code sees it as a new
+> **Upgrading from the old ProjectGraph extension (0.6.x or earlier)?** The extension was renamed, so VS Code sees it as a new
 > extension: uninstall "ProjectGraph", install Spitball, then run **Spitball: Connect Existing Map** in each repo
 > and paste its map link (the old maps are all still there). Old `projectgraph.*` settings keep working.
 

@@ -17,7 +17,7 @@ function getDb(): Promise<Db> {
     const client = new MongoClient(process.env.MONGODB_URI!, { serverSelectionTimeoutMS: 8000 });
     g.__mongoDb = client
       .connect()
-      .then((c) => c.db(process.env.MONGODB_DB || "projectgraph"))
+      .then((c) => c.db(process.env.MONGODB_DB || "spitball"))
       .catch((e) => {
         g.__mongoDb = undefined;
         throw new Error(`MongoDB connection failed: ${(e as Error).message}`);

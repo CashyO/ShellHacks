@@ -1,6 +1,6 @@
 # Instructions for coding agents (and humans)
 
-This is **ProjectGraph**, a hackathon project with a hard MVP deadline of **Sat 11 PM**.
+This is **Spitball**, a hackathon project with a hard MVP deadline of **Sat 11 PM**.
 
 ## Read first, every session
 0. `docs/index.md`: where every kind of information lives, including where to read library docs.
