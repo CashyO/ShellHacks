@@ -9,6 +9,7 @@ import { BuildJson, BuildSchema, isPlausiblePath } from "@/lib/schemas";
 import type { FileChange } from "@/lib/types";
 
 const REAL = true;
+export const maxDuration = 60; // Vercel: allow long AI calls
 
 export async function POST(req: Request) {
   const { mapId, nodeId } = (await req.json()) as { mapId: string; nodeId: string };

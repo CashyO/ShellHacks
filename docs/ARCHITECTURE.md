@@ -164,14 +164,14 @@ All routes: JSON in, JSON out. Errors return `{ error: string }` with a 4xx/5xx 
 | `POST /api/pr` | `{ mapId, nodeId }` | `{ map }` | Uses stored proposal → branch `projectgraph/<nodeId>` → commit files → open PR → `status = "pr_open"` |
 | `POST /api/sync` | `{ mapId }` | `{ map, changed: boolean }` | Compare `lastSyncedSha...defaultBranch`. If new commits: mark shipped, detect new work, sprout ideas |
 
-### Auth-ready design (build later, design now)
+### GitHub sign-in and token handling (built)
 
-The MVP uses one service token, so it can read any public repo but **write only where that token's account has push access** (the demo repo). We do not build login for the MVP, but we shape the code so "Sign in with GitHub" is a small swap later:
+Without sign-in, the app uses one service token (`GITHUB_TOKEN`): it can read any public repo but write only where that account has push access. With GitHub sign-in (below), each user's own token is used instead, so PRs open as them, on their repos, including private ones. The rules that keep both working:
 
 - **Every function in `github.ts` takes a `token` argument** (`getSnapshot(owner, name, token?)`, `createPr(..., token?)`, etc.) and defaults to `process.env.GITHUB_TOKEN`. Never read the env var anywhere else.
-- **Routes obtain the token through one helper** (for example `getRequestToken(req)` in `github.ts`). In the MVP it returns the env token. With OAuth it would return the user's token from a signed httpOnly cookie. Routes never touch tokens directly.
+- **Routes obtain the token through one helper** (for example `getRequestToken(req)` in `github.ts`). It returns the signed-in user's token from the encrypted cookie, else the env token. Routes never touch tokens directly.
 - **Write-permission check:** `github.getRepoAccess(owner, name, token?)` returns `{ canWrite: boolean }` (from the repo's `permissions.push`). If `canWrite` is false, the UI shows the diff and "Copy prompt" and disables "Open PR" with the note "Preview only: PRs need write access". This is the same graceful fallback as PLAN.md's fallback table.
-- **Later (stretch):** GitHub OAuth (`/api/auth/login`, `/api/auth/callback`, token in a signed httpOnly cookie, and an owner field on maps). See PLAN.md Phase 5. Adding it requires a §2 dependency decision first.
+- **Built: GitHub OAuth.** `GET /api/auth/login` sends the user to GitHub (scope `repo`); `GET /api/auth/callback` exchanges the code and stores the token in an AES-GCM encrypted, httpOnly cookie (`src/lib/session.ts`, key from `SESSION_SECRET`). `getRequestToken(req)` returns the user's token, else `GITHUB_TOKEN`. `GET /api/auth/me` (never returns the token), `POST /api/auth/logout`, and `GET /api/repos` (the signed-in user's repos for the picker) support the landing page. Uses plain `fetch`, no new dependency. Map ids are UUIDs, so a map link is the only thing protecting a private repo's map.
 
 ### Route internals
 
@@ -262,7 +262,11 @@ GEMINI_API_KEY=
 GEMINI_MODEL=            # current Flash model id from AI Studio
 GITHUB_TOKEN=            # classic PAT, `repo` scope; must have write access to the demo repo
 MONGODB_URI=
-MOCK_MODE=false          # true = API routes return src/lib/mock.ts, no keys needed
+MOCK_MODE=false          # true = API routes return src/lib/mock.ts, no keys needed. MUST be false in production (else every repo shows the sample demo)
+GITHUB_CLIENT_ID=        # OAuth App (github.com/settings/developers); callback = <APP_URL>/api/auth/callback
+GITHUB_CLIENT_SECRET=
+SESSION_SECRET=          # random 32+ chars
+APP_URL=                 # optional public URL
 AI_CACHE=on
 ```
 
@@ -283,6 +287,6 @@ A small separate repo we control (e.g. `chronos-scheduler`, ~10 files, a simple 
 
 ## 12. Out of scope (do not build)
 
-For the MVP: login/accounts, private repos, live keystroke watching, auto-merging PRs, chat UI, multi-user presence, repos bigger than ~40 relevant files.
+Live keystroke watching, auto-merging PRs, chat UI, multi-user presence, repos bigger than ~40 relevant files.
 
-**Deferred, not rejected:** GitHub OAuth login is the first stretch item after the MVP passes its run-through (PLAN.md Phase 5). It also unlocks private repos and PRs on the user's own repos. Build it only then, but keep the `token` parameter design in §6 from day one.
+**Sign-in is built** (see §6). Still out of scope: multi-user accounts/teams, per-map access control beyond unguessable ids, and GitHub Apps.

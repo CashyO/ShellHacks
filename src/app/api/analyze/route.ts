@@ -4,10 +4,11 @@ import { generateJSON } from "@/lib/gemini";
 import { describeError, getRequestToken, getSnapshot, parseRepoUrl } from "@/lib/github";
 import { isMock, mockAnalyze } from "@/lib/mock";
 import * as prompts from "@/lib/prompts";
-import { AnalyzeJson, AnalyzeSchema, filterByTree, newId, toNode } from "@/lib/schemas";
+import { AnalyzeJson, AnalyzeSchema, filterByTree, newMapId, toNode } from "@/lib/schemas";
 import type { CodeMap } from "@/lib/types";
 
 const REAL = true;
+export const maxDuration = 60; // Vercel: allow long AI calls
 
 export async function POST(req: Request) {
   if (isMock() || !REAL) return NextResponse.json({ map: mockAnalyze() });
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
 
     const now = new Date().toISOString();
     const map: CodeMap = {
-      _id: repoUrl.trim() === "demo" ? "demo" : newId(),
+      _id: repoUrl.trim() === "demo" ? "demo" : newMapId(),
       repo: { owner, name, defaultBranch: snapshot.defaultBranch, url: `https://github.com/${owner}/${name}` },
       summary: result.summary,
       stack: result.stack,

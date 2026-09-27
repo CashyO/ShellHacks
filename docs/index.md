@@ -41,6 +41,8 @@ src/lib/prompts.ts            prompt builders
 src/lib/gemini.ts             generateJSON() and AI cache
 src/lib/mock.ts               MOCK_MODE fixture and in-memory store
 src/lib/github.ts, db.ts      GitHub (Octokit: snapshot, files, PR, compare) and MongoDB (maps, ai_cache; in-memory fallback without a URI)
+src/lib/session.ts            encrypted cookie session for GitHub sign-in (never import from client code)
+src/app/api/auth/*, /api/repos  GitHub OAuth login/callback/logout/me and the repo picker list
 src/lib/api-client.ts         typed fetch wrappers used by all UI
 ```
 

@@ -1,11 +1,35 @@
 import { Octokit } from "@octokit/rest";
+import type { RepoSummary } from "./api-client";
 import type { Snapshot } from "./prompts";
+import { getSession } from "./session";
 import type { Proposal } from "./types";
 
 // Auth-ready (ARCHITECTURE §6): every function takes an optional token and falls back to GITHUB_TOKEN.
 // Routes get the token only through getRequestToken(); with OAuth later, only this helper changes.
-export function getRequestToken(_req?: Request): string | undefined {
-  return process.env.GITHUB_TOKEN || undefined;
+// The signed-in user's token (encrypted cookie) wins; otherwise the shared service token, if any.
+export function getRequestToken(req?: Request): string | undefined {
+  const session = req ? getSession(req) : null;
+  return session?.token ?? (process.env.GITHUB_TOKEN || undefined);
+}
+
+export async function listUserRepos(token: string): Promise<RepoSummary[]> {
+  const res = await octo(token).rest.repos.listForAuthenticatedUser({
+    sort: "pushed",
+    per_page: 100,
+    affiliation: "owner,collaborator,organization_member",
+  });
+  return res.data
+    .filter((r) => !r.archived)
+    .map((r) => ({
+      fullName: r.full_name,
+      name: r.name,
+      owner: r.owner.login,
+      private: r.private,
+      description: r.description,
+      language: r.language ?? null,
+      pushedAt: r.pushed_at ?? null,
+      canWrite: !!r.permissions?.push,
+    }));
 }
 
 const octo = (token?: string) => new Octokit({ auth: token ?? getRequestToken(), userAgent: "projectgraph" });

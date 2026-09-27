@@ -29,3 +29,28 @@ export const openPr = (mapId: string, nodeId: string) =>
 
 export const syncMap = (mapId: string) =>
   send<{ map: CodeMap; changed: boolean }>("POST", "/api/sync", { mapId });
+
+// ---- GitHub connection (sign in + repo picker) ----
+
+export interface RepoSummary {
+  fullName: string;
+  name: string;
+  owner: string;
+  private: boolean;
+  description: string | null;
+  language: string | null;
+  pushedAt: string | null;
+  canWrite: boolean;
+}
+
+export interface Me {
+  configured: boolean;
+  mockMode: boolean;
+  user: { login: string; avatarUrl: string } | null;
+}
+
+export const getMe = () => call<Me>("/api/auth/me");
+
+export const listRepos = () => call<{ repos: RepoSummary[] }>("/api/repos").then((r) => r.repos);
+
+export const logout = () => call<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
