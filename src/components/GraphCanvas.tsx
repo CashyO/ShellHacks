@@ -41,11 +41,15 @@ export default function GraphCanvas({
   selectedId,
   onSelect,
   focusFile,
+  multiSelected,
+  onToggleMultiSelect,
 }: {
   map: CodeMap;
   selectedId: string;
   onSelect: (id: string) => void;
   focusFile?: string; // file open in VS Code; ideas touching it get a live ring
+  multiSelected?: Set<string>; // Ctrl/Cmd-click to toggle; for combining several ideas into one
+  onToggleMultiSelect?: (id: string) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const fgRef = useRef<ForceGraphMethods<GNode, GLink> | undefined>(undefined);
@@ -226,6 +230,16 @@ export default function GraphCanvas({
       ctx.stroke();
     }
 
+    if (multiSelected?.has(node.id)) {
+      ctx.beginPath();
+      ctx.arc(x, y, r + 6, 0, 2 * Math.PI);
+      ctx.strokeStyle = "#0EA5E9";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([2, 2]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     if (scale > 0.6) {
       ctx.fillStyle = ink;
       ctx.font = `${Math.max(9 / scale, 3.2)}px sans-serif`;
@@ -279,7 +293,14 @@ export default function GraphCanvas({
           ctx.arc(node.x ?? 0, node.y ?? 0, r, 0, 2 * Math.PI);
           ctx.fill();
         }}
-        onNodeClick={(node) => onSelect(String(node.id))}
+        onNodeClick={(node, event) => {
+          const id = String(node.id);
+          if (id !== "root" && (event.ctrlKey || event.metaKey) && onToggleMultiSelect) {
+            onToggleMultiSelect(id);
+            return;
+          }
+          onSelect(id);
+        }}
         onBackgroundClick={() => onSelect("root")}
       />
     </div>

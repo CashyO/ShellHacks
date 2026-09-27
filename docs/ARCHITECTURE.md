@@ -254,6 +254,10 @@ export async function generateJSON<T>(prompt: string, responseSchema: object, zo
 
 `DecisionsLog.tsx`, opened from a "Decisions (n)" button in the header, lists every **rejected** idea with who rejected it and why (`rejectedBy` / `rejectedNote`, set by `PATCH /api/maps/[id]`). Rejected nodes are hidden from the graph itself (§8), so this is the only place that record is visible — the point being a durable, searchable "what we already considered and said no to," which a chat session has no equivalent of.
 
+## 7b. Combine ideas (built)
+
+Ctrl/Cmd-click toggles a node into a multi-selection (a dashed sky-blue ring, distinct from the solid selection ring and the amber dependency edges). With 2+ selected, `CombinePanel.tsx` shows a deterministic merge (concatenated description/rationale, union of files, worst-case effort, majority type — no AI call, since this is a "steer it yourself" tool) as an editable starting point. Confirming calls `POST /api/nodes` for the combined node (`origin: "manual"`) then `PATCH /api/maps/[id]` on each source node (`status: "rejected"`, `rejectedNote: 'Combined into "<title>"'`) — no new backend route; it composes the two that already exist. The originals aren't deleted: they show up in the Decisions log explaining what they became.
+
 ## 8. Frontend behavior
 
 - `/map/[id]` loads the map, renders `Graph` (left, flexible width) and `DetailPanel` + `ActivityFeed` (right, 380px).

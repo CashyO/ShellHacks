@@ -15,6 +15,8 @@ export default function Graph(props: {
   selectedId: string;
   onSelect: (id: string) => void;
   focusFile?: string;
+  multiSelected?: Set<string>;
+  onToggleMultiSelect?: (id: string) => void;
 }) {
   return <GraphCanvas {...props} />;
 }
