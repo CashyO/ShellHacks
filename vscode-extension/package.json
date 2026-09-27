@@ -1,9 +1,9 @@
 {
-  "name": "projectgraph",
-  "displayName": "ProjectGraph",
-  "description": "A living mind map of your local repo that grows with every commit and suggests ideas while you code.",
-  "version": "0.6.1",
-  "publisher": "projectgraph",
+  "name": "spitball",
+  "displayName": "Spitball",
+  "description": "Spitball: a living mind map of your local repo that grows with every commit, with an AI agent that pitches ideas while you code.",
+  "version": "0.7.0",
+  "publisher": "spitball",
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
@@ -15,12 +15,13 @@
     "url": "https://github.com/CashyO/ShellHacks/issues"
   },
   "keywords": [
-    "mind map",
-    "ideas",
     "ai",
     "gemini",
     "git",
-    "planning"
+    "ideas",
+    "mind map",
+    "planning",
+    "spitball"
   ],
   "engines": {
     "vscode": "^1.85.0"
@@ -32,62 +33,67 @@
   "activationEvents": [
     "onStartupFinished",
     "onUri",
-    "onView:projectgraph.map"
+    "onView:spitball.map"
   ],
   "contributes": {
     "commands": [
       {
-        "command": "projectgraph.open",
+        "command": "spitball.open",
         "title": "Open Map",
-        "category": "ProjectGraph"
+        "category": "Spitball"
       },
       {
-        "command": "projectgraph.showInSidebar",
+        "command": "spitball.showInSidebar",
         "title": "Show Map in Sidebar",
-        "category": "ProjectGraph"
+        "category": "Spitball"
       },
       {
-        "command": "projectgraph.mapRepository",
+        "command": "spitball.connectMap",
+        "title": "Connect Existing Map",
+        "category": "Spitball"
+      },
+      {
+        "command": "spitball.mapRepository",
         "title": "Map This Repository",
-        "category": "ProjectGraph"
+        "category": "Spitball"
       },
       {
-        "command": "projectgraph.suggestNow",
+        "command": "spitball.suggestNow",
         "title": "Suggest Ideas From My Changes",
-        "category": "ProjectGraph"
+        "category": "Spitball"
       },
       {
-        "command": "projectgraph.openInBrowser",
+        "command": "spitball.openInBrowser",
         "title": "Open Map in Browser",
-        "category": "ProjectGraph"
+        "category": "Spitball"
       }
     ],
     "configuration": {
-      "title": "ProjectGraph",
+      "title": "Spitball",
       "properties": {
-        "projectgraph.url": {
+        "spitball.url": {
           "type": "string",
           "default": "http://localhost:3000",
-          "description": "Where the ProjectGraph app is running."
+          "description": "Where the Spitball app is running."
         },
-        "projectgraph.passiveIdeas": {
+        "spitball.passiveIdeas": {
           "type": "boolean",
           "default": true,
           "description": "Let the agent watch what you do (current file, function, errors, uncommitted changes) and pitch ideas via Gemini when you pause."
         },
-        "projectgraph.ideaDelaySeconds": {
+        "spitball.ideaDelaySeconds": {
           "type": "number",
           "default": 10,
           "minimum": 5,
           "description": "How long to wait after you stop typing or save before asking for ideas."
         },
-        "projectgraph.minIdeaIntervalSeconds": {
+        "spitball.minIdeaIntervalSeconds": {
           "type": "number",
           "default": 45,
           "minimum": 15,
           "description": "Minimum time between idea requests, to limit Gemini calls."
         },
-        "projectgraph.notifications": {
+        "spitball.notifications": {
           "type": "boolean",
           "default": true,
           "description": "Show a notification when a new idea appears."
@@ -97,17 +103,17 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "projectgraph",
-          "title": "ProjectGraph",
+          "id": "spitball",
+          "title": "Spitball",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "projectgraph": [
+      "spitball": [
         {
           "type": "webview",
-          "id": "projectgraph.map",
+          "id": "spitball.map",
           "name": "Mind Map"
         }
       ]

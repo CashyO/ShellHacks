@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0 (2026-09-27)
+
+### Changed
+- **Renamed to Spitball.** New extension ID `spitball.spitball`; commands, sidebar and settings are now
+  `Spitball` / `spitball.*`. Uninstall the old "ProjectGraph" extension after installing this one.
+- Old `projectgraph.*` settings are still read if the new `spitball.*` ones aren't set.
+
+### Features
+- **Spitball: Connect Existing Map**: attach a repo to a map you already have by pasting its link or id.
+  Use it after upgrading (maps are remembered per extension ID) or to share one map with a teammate.
+
 ## 0.6.1 (2026-09-27)
 
 ### Fixes
@@ -24,7 +35,7 @@
 
 ## 0.5.0 (2026-09-26)
 
-First release of ProjectGraph for VS Code.
+First release of ProjectGraph for VS Code (now Spitball).
 
 ### Features
 - **Map This Repository**: analyzes the local git repo open in VS Code and draws a mind map of ideas.

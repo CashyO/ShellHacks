@@ -203,7 +203,7 @@ export default function DetailPanel({
   const [vsFeatures, setVsFeatures] = useState<string[] | null>(() => vsCodeFeatures);
   const outdated = (feature: string) => local && embedded && !vsFeatures?.includes(feature);
   const needReload = () =>
-    setError("Your ProjectGraph extension is out of date. In VS Code run “Developer: Reload Window” (or install the latest .vsix), then try again.");
+    setError("Your Spitball extension is out of date. In VS Code run “Developer: Reload Window” (or install the latest .vsix), then try again.");
 
   useEffect(() => {
     if (!local || window.parent === window) return;

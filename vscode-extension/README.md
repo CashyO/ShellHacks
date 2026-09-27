@@ -1,7 +1,7 @@
-# ProjectGraph for VS Code
+# Spitball for VS Code
 
 A living mind map of the **local** repo open in VS Code. It never talks to GitHub: the extension reads your
-checkout and sends it to the ProjectGraph app (`/api/local/*`), which uses Gemini.
+checkout and sends it to the Spitball app (`/api/local/*`), which uses Gemini.
 
 - **Map This Repository** analyzes your local files and draws the first ideas.
 - **Every commit grows the map.** No push needed. Ideas your commit implemented turn green, work you did
@@ -18,34 +18,39 @@ checkout and sends it to the ProjectGraph app (`/api/local/*`), which uses Gemin
 
 ## Install
 
-Download `projectgraph-<version>.vsix` from the
+> **Upgrading from ProjectGraph (0.6.x or earlier)?** The extension was renamed, so VS Code sees it as a new
+> extension: uninstall "ProjectGraph", install Spitball, then run **Spitball: Connect Existing Map** in each repo
+> and paste its map link (the old maps are all still there). Old `projectgraph.*` settings keep working.
+
+Download `spitball-<version>.vsix` from the
 [Releases page](https://github.com/CashyO/ShellHacks/releases), then in VS Code run
 **Extensions: Install from VSIX…** (⌘⇧P / Ctrl+Shift+P) and pick the file. Or from a terminal:
 
 ```bash
-code --install-extension projectgraph-0.6.1.vsix
+code --install-extension spitball-0.7.0.vsix
 ```
 
-The extension is a front end: it needs the ProjectGraph app running (next section). Your code snippets and
+The extension is a front end: it needs the Spitball app running (next section). Your code snippets and
 diffs are sent to that app, which sends them to Gemini.
 
 ## Use it
 
 1. Start the app in the repo root with `npm run dev`. `.env.local` needs `MOCK_MODE=false` and a Gemini key.
 2. Open your project folder (a git repo) in VS Code.
-3. Click **ProjectGraph** in the status bar, then **Map This Repository**.
+3. Click **Spitball** in the status bar, then **Map This Repository**.
 4. Code, pause, commit, and watch the map grow.
 
 | Command | What it does |
 |---|---|
-| ProjectGraph: Open Map | Opens the map for this repo in an editor tab (offers to create it) |
-| ProjectGraph: Show Map in Sidebar | Opens the Mind Map view (drag it to the secondary side bar) |
-| ProjectGraph: Map This Repository | Creates a new map from the current files |
-| ProjectGraph: Suggest Ideas From My Changes | Asks for ideas now, skipping the wait |
-| ProjectGraph: Open Map in Browser | Opens the same map outside VS Code |
+| Spitball: Open Map | Opens the map for this repo in an editor tab (offers to create it) |
+| Spitball: Show Map in Sidebar | Opens the Mind Map view (drag it to the secondary side bar) |
+| Spitball: Map This Repository | Creates a new map from the current files |
+| Spitball: Connect Existing Map | Attaches this repo to a map you already have (paste its link or id) |
+| Spitball: Suggest Ideas From My Changes | Asks for ideas now, skipping the wait |
+| Spitball: Open Map in Browser | Opens the same map outside VS Code |
 
-Settings: `projectgraph.url`, `projectgraph.passiveIdeas`, `projectgraph.ideaDelaySeconds`,
-`projectgraph.minIdeaIntervalSeconds`, `projectgraph.notifications`. The output channel **ProjectGraph** logs
+Settings: `spitball.url`, `spitball.passiveIdeas`, `spitball.ideaDelaySeconds`,
+`spitball.minIdeaIntervalSeconds`, `spitball.notifications`. The output channel **Spitball** logs
 errors.
 
 ## Develop and package

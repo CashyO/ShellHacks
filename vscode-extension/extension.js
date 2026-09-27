@@ -1,4 +1,4 @@
-// ProjectGraph for VS Code: maps the LOCAL repo open in this window and keeps the map growing.
+// Spitball for VS Code: maps the LOCAL repo open in this window and keeps the map growing.
 //  - "Map This Repository" sends a snapshot of the checkout to /api/local/analyze (no GitHub).
 //  - Every local commit is sent to /api/local/sync, which ships ideas, detects work and sprouts new ones.
 //  - A passive agent watches the editor (file, function under the cursor, errors, uncommitted diff) and,
@@ -18,7 +18,7 @@ const path = require("path");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const crypto = require("crypto");
 
-const MAP_KEY = "projectgraph.mapId";
+const MAP_KEY = "spitball.mapId";
 // Page messages this build handles; sent on "ready" so the map can hide or explain buttons an older
 // extension would silently ignore.
 const FEATURES = ["openFile", "openFiles", "build", "review", "copy", "agent"];
@@ -36,7 +36,7 @@ const MAX_FILE_BYTES = 100 * 1024;
 
 let ctx;
 let panel; // editor tab docked beside the code
-let sidebar; // "Mind Map" view in the ProjectGraph sidebar (can be dragged to the right-hand sidebar)
+let sidebar; // "Mind Map" view in the Spitball sidebar (can be dragged to the right-hand sidebar)
 let status;
 let log;
 let repoRoot;
@@ -48,8 +48,8 @@ let statusReset;
 let chain = Promise.resolve();
 let focusTimer;
 let recentFiles = [];
-// Proposed file contents shown on the right side of review diffs (scheme projectgraph-proposal:).
-const PROPOSAL_SCHEME = "projectgraph-proposal";
+// Proposed file contents shown on the right side of review diffs (scheme spitball-proposal:).
+const PROPOSAL_SCHEME = "spitball-proposal";
 const proposals = new Map();
 const proposalChanged = new vscode.EventEmitter();
 // Live agent state mirrored to the map page (src/components/AgentPulse.tsx).
@@ -59,7 +59,13 @@ const agent = { state: "watching", focus: undefined, thought: "", pitches: [] };
 // Helpers
 // ---------------------------------------------------------------------------
 
-const cfg = (key, def) => vscode.workspace.getConfiguration("projectgraph").get(key, def);
+/** Setting from spitball.*, falling back to the pre-rename projectgraph.* key if only that one is set. */
+function cfg(key, def) {
+  const own = vscode.workspace.getConfiguration("spitball").inspect(key);
+  const set = own && [own.workspaceFolderValue, own.workspaceValue, own.globalValue].find((v) => v !== undefined);
+  if (set !== undefined) return set;
+  return vscode.workspace.getConfiguration("projectgraph").get(key, def);
+}
 const appUrl = () => cfg("url", "http://localhost:3000").replace(/\/+$/, "");
 const mapId = () => ctx.workspaceState.get(MAP_KEY);
 
@@ -95,16 +101,16 @@ async function api(route, body) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new Error(`Can't reach the ProjectGraph app at ${appUrl()}. Start it with \`npm run dev\` or check the projectgraph.url setting.`);
+    throw new Error(`Can't reach the Spitball app at ${appUrl()}. Start it with \`npm run dev\` or check the spitball.url setting.`);
   }
   const data = await res.json().catch(() => null);
   if (res.ok && data) return data;
   if (data && data.error) throw Object.assign(new Error(data.error), { status: res.status });
-  // Every ProjectGraph route answers in JSON, so a non-JSON 404 means the server is an older version
+  // Every Spitball route answers in JSON, so a non-JSON 404 means the server is an older version
   // (no /api/local routes) or a different app is using that port.
   if (res.status === 404) {
     throw Object.assign(
-      new Error(`${appUrl()} has no ${route.split("?")[0]} route. Update the ProjectGraph app (git pull on main) and restart \`npm run dev\`, or check that nothing else is using that port.`),
+      new Error(`${appUrl()} has no ${route.split("?")[0]} route. Update the Spitball app (git pull on main) and restart \`npm run dev\`, or check that nothing else is using that port.`),
       { status: 404 },
     );
   }
@@ -116,15 +122,15 @@ const queue = (fn) => (chain = chain.then(fn).catch((e) => fail(e)));
 
 function fail(e, userFacing = false) {
   log.appendLine(`[error] ${e.message}`);
-  setStatus("$(warning) ProjectGraph", e.message, 10000);
-  if (userFacing) vscode.window.showErrorMessage(`ProjectGraph: ${e.message}`);
+  setStatus("$(warning) Spitball", e.message, 10000);
+  if (userFacing) vscode.window.showErrorMessage(`Spitball: ${e.message}`);
 }
 
 function setStatus(text, tooltip, resetMs) {
   clearTimeout(statusReset);
   status.text = text;
-  status.tooltip = tooltip || "Open ProjectGraph";
-  if (resetMs) statusReset = setTimeout(() => setStatus("$(type-hierarchy) ProjectGraph"), resetMs);
+  status.tooltip = tooltip || "Open Spitball";
+  if (resetMs) statusReset = setTimeout(() => setStatus("$(type-hierarchy) Spitball"), resetMs);
 }
 
 const rel = (abs) => path.relative(repoRoot, abs).split(path.sep).join("/");
@@ -199,7 +205,7 @@ async function workInProgress() {
 
   for (const doc of vscode.workspace.textDocuments) {
     if (!doc.isDirty || !inRepo(doc) || !fs.existsSync(doc.uri.fsPath)) continue;
-    const tmp = path.join(os.tmpdir(), `projectgraph-${crypto.randomUUID()}`);
+    const tmp = path.join(os.tmpdir(), `spitball-${crypto.randomUUID()}`);
     try {
       fs.writeFileSync(tmp, doc.getText());
       const d = await git(["diff", "--no-index", "--no-color", "--", doc.uri.fsPath, tmp], { okCodes: [0, 1] });
@@ -279,12 +285,12 @@ function onFocusChanged(restartIdle) {
 async function mapRepository() {
   repoRoot = repoRoot || (await findRepoRoot());
   if (!repoRoot) {
-    vscode.window.showWarningMessage("ProjectGraph: open a folder that is a git repository first.");
+    vscode.window.showWarningMessage("Spitball: open a folder that is a git repository first.");
     return;
   }
   try {
     const { map } = await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: `ProjectGraph: mapping ${path.basename(repoRoot)} with Gemini…` },
+      { location: vscode.ProgressLocation.Notification, title: `Spitball: mapping ${path.basename(repoRoot)} with Gemini…` },
       async () => api("/api/local/analyze", await snapshot()),
     );
     await ctx.workspaceState.update(MAP_KEY, map._id);
@@ -296,13 +302,37 @@ async function mapRepository() {
   }
 }
 
+/** Attach this repo to a map that already exists (after the rename, or to share a teammate's map). */
+async function connectMap() {
+  const input = await vscode.window.showInputBox({
+    title: "Spitball: Connect Existing Map",
+    prompt: "Paste the map link (…/map/<id>) or just the map id",
+    placeHolder: "http://localhost:3000/map/6966d18e",
+    ignoreFocusOut: true,
+  });
+  if (!input) return;
+  const id = (input.trim().match(/\/map\/([A-Za-z0-9_-]+)/) || [])[1] || input.trim();
+  try {
+    const { map } = await api(`/api/maps/${encodeURIComponent(id)}`);
+    await ctx.workspaceState.update(MAP_KEY, map._id);
+    lastHead = await head();
+    if (sidebar) loadInto(sidebar.webview);
+    if (panel || !sidebar) showPanel(true);
+    vscode.window.showInformationMessage(`Spitball: connected to the map for ${map.repo.name} (${map.nodes.length} ideas).`);
+  } catch (e) {
+    fail(e, true);
+  }
+}
+
 async function open() {
   if (!mapId()) {
     const pick = await vscode.window.showInformationMessage(
-      "ProjectGraph hasn't mapped this repository yet. Analyze it now?",
+      "Spitball hasn't mapped this repository yet. Analyze it now?",
       "Map This Repository",
+      "Connect Existing Map",
     );
-    if (pick) await mapRepository();
+    if (pick === "Map This Repository") await mapRepository();
+    if (pick === "Connect Existing Map") await connectMap();
     return;
   }
   showPanel(false);
@@ -315,7 +345,7 @@ function showPanel(reload) {
   }
   if (!panel) {
     // Docked beside the code (like a live side map), without stealing focus from the editor.
-    panel = vscode.window.createWebviewPanel("projectgraph", "ProjectGraph", { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, {
+    panel = vscode.window.createWebviewPanel("spitball", "Spitball", { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, {
       enableScripts: true,
       // Keep the graph's layout and replay position when the tab is in the background.
       retainContextWhenHidden: true,
@@ -371,7 +401,7 @@ async function onPageMessage(msg) {
   }
   if (!msg || msg.type !== "projectgraph:openFile" || typeof msg.path !== "string" || !repoRoot) return;
   if (!(await openFile(msg.path, false))) {
-    vscode.window.showInformationMessage(`ProjectGraph: ${msg.path} doesn't exist yet; this idea would create it.`);
+    vscode.window.showInformationMessage(`Spitball: ${msg.path} doesn't exist yet; this idea would create it.`);
   }
 }
 
@@ -412,18 +442,18 @@ async function buildIdea(nodeId, reuse) {
 
     if (!reuse || !node.proposal) {
       buildStatus(nodeId, "building", "Writing the change…");
-      setStatus("$(loading~spin) ProjectGraph: building…", `Writing "${node.title}"`);
+      setStatus("$(loading~spin) Spitball: building…", `Writing "${node.title}"`);
       const files = node.files
         .map((p) => ({ p, abs: repoPath(p) }))
         .filter((f) => f.abs)
         .map((f) => ({ path: f.p, content: readCurrent(f.abs) }));
       ({ map } = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: `ProjectGraph: building "${node.title}"…` },
+        { location: vscode.ProgressLocation.Notification, title: `Spitball: building "${node.title}"…` },
         () => api("/api/local/build", { mapId: id, nodeId, files }),
       ));
       refresh(nodeId);
       node = map.nodes.find((n) => n.id === nodeId);
-      setStatus("$(type-hierarchy) ProjectGraph");
+      setStatus("$(type-hierarchy) Spitball");
     }
     await reviewProposal(node);
   } catch (e) {
@@ -454,7 +484,7 @@ async function reviewProposal(node) {
 
   const files = changes.map((c) => c.path).join(", ");
   const pick = await vscode.window.showInformationMessage(
-    `ProjectGraph: "${node.title}" changes ${files}. Apply it to your files?`,
+    `Spitball: "${node.title}" changes ${files}. Apply it to your files?`,
     "Apply",
     "Discard",
   );
@@ -490,7 +520,7 @@ async function applyProposal(node, changes) {
   }
   for (const c of changes) await openFile(c.path, false);
   buildStatus(node.id, "applied", "Applied. Test it, then commit to grow the map.");
-  setStatus("$(check) ProjectGraph: change applied", `"${node.title}" applied; commit when it works`, 10000);
+  setStatus("$(check) Spitball: change applied", `"${node.title}" applied; commit when it works`, 10000);
 }
 
 const refresh = (select) => post({ type: "projectgraph:refresh", select });
@@ -509,7 +539,9 @@ function placeholder() {
 </head>
 <body>
   <p>This repository doesn't have a mind map yet.</p>
-  <a href="command:projectgraph.mapRepository">Map This Repository</a>
+  <a href="command:spitball.mapRepository">Map This Repository</a>
+  <p style="margin-top:16px;opacity:.8">Already have a map (from before the rename, or a teammate's)?</p>
+  <a href="command:spitball.connectMap">Connect Existing Map</a>
 </body>
 </html>`;
 }
@@ -578,16 +610,16 @@ async function syncCommits() {
     : await git(["show", "--no-color", "--no-ext-diff", "--format=", now]);
   const tree = (await listFiles()).map((f) => f.path);
 
-  setStatus("$(sync~spin) ProjectGraph: reading your commit…", "Updating the map from your latest commit");
+  setStatus("$(sync~spin) Spitball: reading your commit…", "Updating the map from your latest commit");
   const before = new Set(map.nodes.map((n) => n.id));
   const res = await api("/api/local/sync", { mapId: id, headSha: now, commits, patches: splitPatches(diff), tree });
-  if (!res.changed) return setStatus("$(type-hierarchy) ProjectGraph");
+  if (!res.changed) return setStatus("$(type-hierarchy) Spitball");
 
   const fresh = res.map.nodes.filter((n) => !before.has(n.id));
   const shipped = res.map.nodes.filter((n) => n.status === "shipped" && map.nodes.some((o) => o.id === n.id && o.status !== "shipped"));
   refresh(fresh[0] && fresh[0].id);
   const bits = [shipped.length && `${shipped.length} shipped`, fresh.length && `+${fresh.length} ideas`].filter(Boolean);
-  setStatus(`$(git-commit) ProjectGraph: ${bits.join(", ") || "synced"}`, "Map updated from your commit", 10000);
+  setStatus(`$(git-commit) Spitball: ${bits.join(", ") || "synced"}`, "Map updated from your commit", 10000);
   if (fresh.length && cfg("notifications", true)) {
     notify(`🌱 Your commit grew the map: ${fresh.map((n) => `"${n.title}"`).join(", ")}`, fresh[0].id);
   }
@@ -617,7 +649,7 @@ async function suggestIdeas(force = false) {
   lastDiffHash = hash;
   lastIdeaAt = Date.now();
 
-  setStatus("$(lightbulb) ProjectGraph: thinking about your code…", "The agent is looking at what you're doing");
+  setStatus("$(lightbulb) Spitball: thinking about your code…", "The agent is looking at what you're doing");
   agent.state = "thinking";
   pushAgent();
   let res;
@@ -632,15 +664,15 @@ async function suggestIdeas(force = false) {
   if (thought) agent.thought = thought;
   if (!added.length) {
     pushAgent();
-    setStatus("$(type-hierarchy) ProjectGraph", thought || "No new ideas right now");
-    if (force) vscode.window.showInformationMessage(`ProjectGraph: ${thought || "no new ideas right now."}`);
+    setStatus("$(type-hierarchy) Spitball", thought || "No new ideas right now");
+    if (force) vscode.window.showInformationMessage(`Spitball: ${thought || "no new ideas right now."}`);
     return;
   }
   const ideas = map.nodes.filter((n) => added.includes(n.id));
   agent.pitches = [...added, ...agent.pitches].slice(0, 10);
   pushAgent();
   refresh(ideas[0].id);
-  setStatus(`$(lightbulb) ProjectGraph: +${ideas.length} idea${ideas.length > 1 ? "s" : ""}`, ideas.map((n) => n.title).join("\n"), 15000);
+  setStatus(`$(lightbulb) Spitball: +${ideas.length} idea${ideas.length > 1 ? "s" : ""}`, ideas.map((n) => n.title).join("\n"), 15000);
   if (cfg("notifications", true)) notify(`💡 ${ideas[0].title}: ${ideas[0].description}`, ideas[0].id);
 }
 
@@ -654,36 +686,37 @@ async function notify(text, nodeId) {
 
 async function activate(context) {
   ctx = context;
-  log = vscode.window.createOutputChannel("ProjectGraph");
+  log = vscode.window.createOutputChannel("Spitball");
   status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
-  status.command = "projectgraph.open";
-  setStatus("$(type-hierarchy) ProjectGraph");
+  status.command = "spitball.open";
+  setStatus("$(type-hierarchy) Spitball");
   status.show();
 
   context.subscriptions.push(
     log,
     status,
-    vscode.commands.registerCommand("projectgraph.open", open),
-    vscode.commands.registerCommand("projectgraph.mapRepository", mapRepository),
+    vscode.commands.registerCommand("spitball.open", open),
+    vscode.commands.registerCommand("spitball.mapRepository", mapRepository),
+    vscode.commands.registerCommand("spitball.connectMap", connectMap),
     vscode.workspace.registerTextDocumentContentProvider(PROPOSAL_SCHEME, {
       onDidChange: proposalChanged.event,
       provideTextDocumentContent: (uri) => proposals.get(uri.toString()) ?? "",
     }),
-    vscode.commands.registerCommand("projectgraph.showInSidebar", () => vscode.commands.executeCommand("projectgraph.map.focus")),
-    vscode.window.registerWebviewViewProvider("projectgraph.map", sidebarProvider, {
+    vscode.commands.registerCommand("spitball.showInSidebar", () => vscode.commands.executeCommand("spitball.map.focus")),
+    vscode.window.registerWebviewViewProvider("spitball.map", sidebarProvider, {
       // Keep the graph's layout and replay position when the sidebar is collapsed.
       webviewOptions: { retainContextWhenHidden: true },
     }),
-    vscode.commands.registerCommand("projectgraph.suggestNow", () => queue(() => suggestIdeas(true))),
-    vscode.commands.registerCommand("projectgraph.openInBrowser", () =>
+    vscode.commands.registerCommand("spitball.suggestNow", () => queue(() => suggestIdeas(true))),
+    vscode.commands.registerCommand("spitball.openInBrowser", () =>
       vscode.env.openExternal(vscode.Uri.parse(mapId() ? `${appUrl()}/map/${mapId()}` : appUrl())),
     ),
-    // vscode://projectgraph.projectgraph/open (editor tab), /sidebar, or /map (map this repo), from a terminal or a web link.
+    // vscode://spitball.spitball/open (editor tab), /sidebar, or /map (map this repo), from a terminal or a web link.
     vscode.window.registerUriHandler({
       handleUri: (uri) => {
         if (uri.path === "/open") open();
-        if (uri.path === "/sidebar") vscode.commands.executeCommand("projectgraph.map.focus");
-        if (uri.path === "/map") vscode.commands.executeCommand("projectgraph.map.focus").then(mapRepository);
+        if (uri.path === "/sidebar") vscode.commands.executeCommand("spitball.map.focus");
+        if (uri.path === "/map") vscode.commands.executeCommand("spitball.map.focus").then(mapRepository);
       },
     }),
     vscode.workspace.onDidChangeTextDocument((e) => e.contentChanges.length && inRepo(e.document) && scheduleIdeas()),
@@ -691,7 +724,7 @@ async function activate(context) {
     vscode.window.onDidChangeTextEditorSelection((e) => inRepo(e.textEditor.document) && onFocusChanged(false)),
     vscode.workspace.onDidSaveTextDocument((doc) => inRepo(doc) && scheduleIdeas()),
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (!e.affectsConfiguration("projectgraph.url")) return;
+      if (!e.affectsConfiguration("spitball.url")) return;
       if (panel) showPanel(true);
       if (sidebar) loadInto(sidebar.webview);
     }),
