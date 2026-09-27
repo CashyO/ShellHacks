@@ -18,8 +18,16 @@ const key = (): Buffer | null => {
   return secret && secret.length >= 16 ? createHash("sha256").update(secret).digest() : null;
 };
 
+/** Names (never values) of the sign-in env vars that are missing or too short. */
+export const missingAuthVars = (): string[] =>
+  [
+    process.env.GITHUB_CLIENT_ID?.trim() ? null : "GITHUB_CLIENT_ID",
+    process.env.GITHUB_CLIENT_SECRET?.trim() ? null : "GITHUB_CLIENT_SECRET",
+    key() ? null : "SESSION_SECRET (16+ characters)",
+  ].filter((v): v is string => v !== null);
+
 /** True when GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET and SESSION_SECRET are all set. */
-export const authConfigured = () => !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET && key());
+export const authConfigured = () => missingAuthVars().length === 0;
 
 export function seal(session: Session): string {
   const k = key();

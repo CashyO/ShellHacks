@@ -45,6 +45,7 @@ export interface RepoSummary {
 
 export interface Me {
   configured: boolean;
+  missing?: string[];
   mockMode: boolean;
   user: { login: string; avatarUrl: string } | null;
 }

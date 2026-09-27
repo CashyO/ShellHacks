@@ -96,6 +96,13 @@ export default function Landing() {
         </p>
       )}
 
+      {me && !me.configured && !me.mockMode && (
+        <p className="rounded-md bg-neutral-100 p-3 text-sm text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+          <strong>GitHub sign-in isn&apos;t set up on this server yet.</strong> Missing: {(me.missing ?? []).join(", ") || "configuration"}. Add
+          them to the environment and restart or redeploy. Until then you can paste a public repo URL below.
+        </p>
+      )}
+
       {busy && (
         <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
           <p className="text-sm font-medium">Analyzing {busy}</p>

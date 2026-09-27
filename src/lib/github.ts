@@ -32,7 +32,27 @@ export async function listUserRepos(token: string): Promise<RepoSummary[]> {
     }));
 }
 
-const octo = (token?: string) => new Octokit({ auth: token ?? getRequestToken(), userAgent: "projectgraph" });
+// If the shared GITHUB_TOKEN is bad (expired, mistyped), GitHub answers 401 even for public data. Retry those
+// requests without credentials so public repos keep working. A signed-in user's token is never retried.
+const octo = (token?: string) => {
+  const auth = token ?? getRequestToken();
+  const isServiceToken = !!auth && auth === process.env.GITHUB_TOKEN;
+  return new Octokit({
+    auth,
+    userAgent: "projectgraph",
+    request: isServiceToken
+      ? {
+          fetch: async (url: string | URL | Request, init?: RequestInit) => {
+            const res = await fetch(url, init);
+            if (res.status !== 401) return res;
+            const headers = new Headers(init?.headers);
+            headers.delete("authorization");
+            return fetch(url, { ...init, headers });
+          },
+        }
+      : undefined,
+  });
+};
 
 export function parseRepoUrl(input: string): { owner: string; name: string } {
   const raw = input.trim();
@@ -65,7 +85,7 @@ export function describeError(e: unknown): { status: number; message: string } {
     if (remaining === "0") return { status: 429, message: "GitHub rate limit reached. Add a GITHUB_TOKEN or wait a few minutes." };
     return { status: 403, message: "GitHub refused the request (permissions). The token may lack write access to this repo." };
   }
-  if (err.status === 401) return { status: 401, message: "GitHub token is invalid or expired." };
+  if (err.status === 401) return { status: 401, message: "Your GitHub connection expired. Sign out and connect GitHub again." };
   return { status: err.status && err.status >= 400 ? err.status : 500, message: err.message ?? "Unexpected error" };
 }
 

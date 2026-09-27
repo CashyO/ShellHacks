@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isMock } from "@/lib/mock";
-import { authConfigured, getSession } from "@/lib/session";
+import { authConfigured, getSession, missingAuthVars } from "@/lib/session";
 
 // What the landing page needs to decide what to show. Never returns the token.
 export async function GET(req: Request) {
@@ -8,6 +8,7 @@ export async function GET(req: Request) {
   return NextResponse.json(
     {
       configured: authConfigured(),
+      missing: missingAuthVars(),
       mockMode: isMock(),
       user: session ? { login: session.login, avatarUrl: session.avatarUrl } : null,
     },
