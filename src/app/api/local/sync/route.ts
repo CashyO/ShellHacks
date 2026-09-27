@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMap, saveMap } from "@/lib/db";
 import { generateJSON } from "@/lib/gemini";
-import { describeError } from "@/lib/github";
-import { localGuard, saveTree } from "@/lib/local";
+import { describeLocalError, localGuard, saveTree } from "@/lib/local";
 import * as prompts from "@/lib/prompts";
 import { dropDuplicateTitles, filterByTree, SyncJson, SyncSchema, toNode } from "@/lib/schemas";
 import type { IdeaNode, MapEvent } from "@/lib/types";
@@ -86,14 +85,14 @@ export async function POST(req: Request) {
         events.push({ at: at(), kind: "sprout", text: `New idea sprouted: "${child.title}"`, nodeId: child.id });
       }
     } catch (e) {
-      events.push({ at: at(), kind: "error", text: `Couldn't analyze new commits: ${describeError(e).message}` });
+      events.push({ at: at(), kind: "error", text: `Couldn't analyze new commits: ${describeLocalError(e).message}` });
     }
 
     map.lastSyncedSha = headSha;
     map.events.push(...events);
     return NextResponse.json({ map: await saveMap(map), changed: true });
   } catch (e) {
-    const { status, message } = describeError(e);
+    const { status, message } = describeLocalError(e);
     return NextResponse.json({ error: message }, { status });
   }
 }
