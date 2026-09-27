@@ -13,6 +13,7 @@ const RULES = `Rules for every idea:
 - Only reference files that appear in the FILE TREE. A new file is allowed only inside an existing folder.
 - Never suggest something the code already does.
 - Do NOT suggest: dark mode, login/auth, generic "add tests", "improve UI", "add comments", "refactor" - unless the code specifically justifies it.
+- "files" lists the files the change would touch. If the idea needs a new file (for example a test file), list that new path instead of an unrelated existing file.
 - Titles are at most 5 words. Descriptions are at most 2 sentences.
 - Use a mix of types. Include at least one "security" or "fix" idea when there is a real reason in the code.
 - effort: S = under an hour, M = a few hours, L = a day or more.`;
@@ -84,6 +85,7 @@ Rules:
 - Return the COMPLETE new contents of every file you change. Never return a patch or a partial file.
 - Change at most 3 files, and only the files needed. Keep the change small and focused.
 - Preserve existing code style, imports, and behavior that is unrelated to this change.
+- Use the values you validated or transformed, not the original raw input, when you pass data onward.
 - Set isNew to true only for files that do not exist yet.
 - prTitle: a short conventional-commit style title. prBody: 2-4 sentences on what changed and why.
 
@@ -96,8 +98,12 @@ export function sync(args: {
   commits: { sha: string; message: string }[];
   patches: { path: string; patch: string }[];
   openNodes: Pick<IdeaNode, "id" | "title" | "files">[];
+  justShipped?: Pick<IdeaNode, "id" | "title">[];
 }): string {
-  const { summary, commits, patches, openNodes } = args;
+  const { summary, commits, patches, openNodes, justShipped = [] } = args;
+  const shippedBlock = justShipped.length
+    ? `\nALREADY SHIPPED (merged PRs already recorded; do NOT report these as detected or shippedIds, but sprouts may build on them):\n${justShipped.map((n) => `- id=${n.id} | ${n.title}`).join("\n")}\n`
+    : "";
   return `You are watching a GitHub repository for new commits and updating its idea map.
 
 APP: ${summary}
@@ -110,11 +116,11 @@ ${patches.map((p) => `=== ${p.path} ===\n${p.patch}`).join("\n\n")}
 
 OPEN IDEAS (not yet shipped):
 ${openNodes.map((n) => `- id=${n.id} | ${n.title} | files: ${n.files.join(", ")}`).join("\n")}
-
+${shippedBlock}
 Return:
 - shippedIds: ids of OPEN IDEAS that these commits clearly implemented. Only include an id if the patches actually do the work. Use only ids listed above.
 - detected: if the commits add a real feature that matches NO open idea, describe it as an idea (it is already built). Otherwise null.
-- sprouts: 2 to 3 NEW ideas that build on what was just shipped or detected. parentId must be an id from shippedIds, or "detected" if it builds on the detected feature.
+- sprouts: 2 to 3 NEW ideas that build on what was just shipped or detected. parentId must be an id from shippedIds or ALREADY SHIPPED, or "detected" if it builds on the detected feature.
 
 ${RULES}`;
 }

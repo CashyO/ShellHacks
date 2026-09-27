@@ -79,10 +79,10 @@ Nobody sleeps during Phases 1–2, since that's when the seams are built. Take *
 - [ ] Standalone PR test script: create a branch, commit 1 file, open a PR on the demo repo
 
 ### Josiah (P3)
-- [ ] `/api/analyze` real path (local JSON snapshot until `getSnapshot` lands), post-filter for unknown files, then `REAL = true`
+- [x] `/api/analyze` real path (built-in demo snapshot until `getSnapshot` lands), post-filter for unknown files, `REAL = true`
 - [ ] Tune `prompts.analyze` on the demo repo until ideas are **specific and cite files**. This is the moat.
-- [ ] `prompts.expand` + `/api/expand`
-- [ ] `prompts.build` + `/api/build` (full file contents → server diff via `createTwoFilesPatch` → `node.proposal`)
+- [x] `prompts.expand` + `/api/expand`
+- [x] `prompts.build` + `/api/build` (full file contents → server diff via `createTwoFilesPatch` → `node.proposal`)
 
 **Checkpoint 1 (H+4):** everyone pulls `main`. Analyzing the demo repo saves a map to Mongo; `GET /api/maps/:id` returns it from Mongo; the graph and panels render it.
 

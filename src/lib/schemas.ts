@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import type { IdeaDraft, IdeaNode, NodeStatus } from "./types";
 
 export const IdeaDraftSchema = z.object({
   title: z.string().describe("At most 5 words"),
@@ -56,3 +58,48 @@ export type AnalyzeResult = z.infer<typeof AnalyzeSchema>;
 export type ExpandResult = z.infer<typeof ExpandSchema>;
 export type BuildResult = z.infer<typeof BuildSchema>;
 export type SyncResult = z.infer<typeof SyncSchema>;
+
+export const newId = () => randomUUID().slice(0, 8);
+
+const normalizePath = (p: string) => p.trim().replace(/^\.?\//, "");
+
+/** A path is plausible if it exists in the tree, or is a new file inside an existing folder. */
+export function isPlausiblePath(path: string, tree: string[]): boolean {
+  const p = normalizePath(path);
+  if (!p || p.includes("..")) return false;
+  if (tree.includes(p)) return true;
+  const dir = p.split("/").slice(0, -1).join("/");
+  return dir === "" || tree.some((t) => t.startsWith(dir + "/"));
+}
+
+/** Post-filter from ARCHITECTURE §6: drop ideas that touch files that don't exist in the repo. */
+export function filterByTree(drafts: IdeaDraft[], tree: string[]): IdeaDraft[] {
+  return drafts
+    .map((d) => ({ ...d, files: d.files.map(normalizePath) }))
+    .filter((d) => d.files.length > 0 && d.files.every((f) => isPlausiblePath(f, tree)));
+}
+
+/** Drop drafts whose title matches one already on the map (case-insensitive). */
+export function dropDuplicateTitles(drafts: IdeaDraft[], existingTitles: string[]): IdeaDraft[] {
+  const seen = new Set(existingTitles.map((t) => t.trim().toLowerCase()));
+  return drafts.filter((d) => {
+    const key = d.title.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function toNode(
+  draft: IdeaDraft,
+  opts: { parentId: string | null; origin: IdeaNode["origin"]; status?: NodeStatus },
+): IdeaNode {
+  return {
+    ...draft,
+    id: newId(),
+    parentId: opts.parentId,
+    status: opts.status ?? "suggested",
+    origin: opts.origin,
+    createdAt: new Date().toISOString(),
+  };
+}

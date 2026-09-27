@@ -40,7 +40,7 @@ src/lib/schemas.ts            zod + Gemini response schemas
 src/lib/prompts.ts            prompt builders
 src/lib/gemini.ts             generateJSON() and AI cache
 src/lib/mock.ts               MOCK_MODE fixture and in-memory store
-src/lib/github.ts, db.ts      GitHub (Octokit) and MongoDB (planned; see PLAN.md)
+src/lib/github.ts, db.ts      GitHub (Octokit: snapshot, files, PR, compare) and MongoDB (maps, ai_cache; in-memory fallback without a URI)
 src/lib/api-client.ts         typed fetch wrappers used by all UI
 ```
 
