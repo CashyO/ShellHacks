@@ -13,7 +13,7 @@ export default function Header({
   return (
     <header className="flex items-center gap-3 border-b border-neutral-200 px-4 py-2.5 text-sm dark:border-neutral-800">
       <a href="/" className="font-semibold">
-        ProjectGraph
+        Spitball
       </a>
       <span className="text-neutral-400">/</span>
       <a className="hover:underline" href={map.repo.url} target="_blank" rel="noreferrer">

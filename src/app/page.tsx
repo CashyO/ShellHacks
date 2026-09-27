@@ -125,7 +125,7 @@ export default function Landing() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-5 p-8">
       <div>
-        <h1 className="text-4xl font-semibold tracking-tight">ProjectGraph</h1>
+        <h1 className="text-4xl font-semibold tracking-tight">Spitball</h1>
         <p className="mt-2 text-neutral-500">
           Connect GitHub, pick a repo, and get a living map of what to build next. Turn any idea into a pull request.
         </p>

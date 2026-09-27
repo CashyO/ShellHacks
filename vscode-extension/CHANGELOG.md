@@ -8,7 +8,7 @@
 
 ## 0.5.0 (2026-09-26)
 
-First release of ProjectGraph for VS Code.
+First release of Spitball for VS Code.
 
 ### Features
 - **Map This Repository**: analyzes the local git repo open in VS Code and draws a mind map of ideas.
@@ -18,7 +18,7 @@ First release of ProjectGraph for VS Code.
 - **Passive agent**: watches the current file, the function under your cursor, your selection, errors
   and uncommitted changes. When you pause, it says what you seem to be doing and pitches 0–2 ideas for
   that moment. At most one request per 45 s; nothing is sent when nothing changed.
-- **Live map beside your code**: a ProjectGraph sidebar (movable to the secondary side bar) or an
+- **Live map beside your code**: a Spitball sidebar (movable to the secondary side bar) or an
   editor tab. Bubbles for your current file get a live ring; the Agent panel shows thoughts and pitches.
 - Click a file on an idea to open it in the editor; Expand and Copy prompt work inside VS Code.
 - Settings for the app URL, passive ideas, timing and notifications.

@@ -32,7 +32,7 @@ export function createMockMap(): CodeMap {
   nodes.find((n) => n.id === "tz")!.shippedCommit = "a1b2c3d";
   return {
     _id: "demo",
-    repo: { owner: "projectgraph-demo", name: "chronos-scheduler", defaultBranch: "main", url: "https://github.com/projectgraph-demo/chronos-scheduler" },
+    repo: { owner: "spitball-demo", name: "chronos-scheduler", defaultBranch: "main", url: "https://github.com/spitball-demo/chronos-scheduler" },
     summary: "A small scheduling app with a day calendar view and an Express events API.",
     stack: ["React", "Express"],
     lastSyncedSha: "a1b2c3d",
@@ -141,7 +141,7 @@ export function mockPr(mapId: string, nodeId: string): CodeMap {
   const { map, n } = need(mapId, nodeId);
   if (!n.proposal) throw new Error("No proposal to open a PR from");
   const number = 13 + map.nodes.filter((x) => x.pr).length;
-  n.pr = { number, url: `${map.repo.url}/pull/${number}`, branch: `projectgraph/${n.id}` };
+  n.pr = { number, url: `${map.repo.url}/pull/${number}`, branch: `spitball/${n.id}` };
   n.status = "pr_open";
   ev(map, "pr", `Opened PR #${number} for "${n.title}"`, n.id);
   return saveMockMap(map);

@@ -105,8 +105,8 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
     if (window.parent === window) return;
     const onMessage = (e: MessageEvent) => {
       if (e.source !== window.parent) return;
-      if (e.data?.type === "projectgraph:agent") setAgent(e.data.agent as AgentState);
-      if (e.data?.type !== "projectgraph:refresh") return;
+      if (e.data?.type === "spitball:agent") setAgent(e.data.agent as AgentState);
+      if (e.data?.type !== "spitball:refresh") return;
       const pick = typeof e.data.select === "string" ? e.data.select : null;
       getMap(id)
         .then((m) => {
@@ -116,7 +116,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
         .catch(() => {});
     };
     window.addEventListener("message", onMessage);
-    window.parent.postMessage({ type: "projectgraph:ready" }, "*");
+    window.parent.postMessage({ type: "spitball:ready" }, "*");
     return () => window.removeEventListener("message", onMessage);
   }, [id]);
 

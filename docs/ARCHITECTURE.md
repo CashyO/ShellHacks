@@ -1,11 +1,11 @@
-# ProjectGraph — Architecture
+# Spitball — Architecture
 
 > Working name. Rename freely; keep this file the source of truth.
 > Every human and every coding agent reads this before writing code.
 
 ## 1. What we're building (one paragraph)
 
-ProjectGraph turns a GitHub repo into a living mind map of what to build next. The center node is the codebase. Gemini reads the code and grows idea nodes (features, improvements, fixes, security, tests), each grounded in real files. Clicking a node can **Expand** it (child ideas), or **Build** it (Gemini writes the change → diff preview → user confirms → a real GitHub PR opens). The app polls the repo; when new commits land, Gemini reads the diff, marks built ideas **shipped** (green), and **sprouts** new ideas from what was just written.
+Spitball turns a GitHub repo into a living mind map of what to build next. The center node is the codebase. Gemini reads the code and grows idea nodes (features, improvements, fixes, security, tests), each grounded in real files. Clicking a node can **Expand** it (child ideas), or **Build** it (Gemini writes the change → diff preview → user confirms → a real GitHub PR opens). The app polls the repo; when new commits land, Gemini reads the diff, marks built ideas **shipped** (green), and **sprouts** new ideas from what was just written.
 
 **The core loop (this is the demo):**
 `push code → map grows → click bubble → PR opens → merge → bubble turns green → new ideas sprout`
@@ -53,7 +53,7 @@ ProjectGraph turns a GitHub repo into a living mind map of what to build next. T
 Each file has **one owner**. Only the owner edits it. Others open a request in team chat.
 
 ```
-projectgraph/
+spitball/
 ├─ CLAUDE.md                      all (rules for agents)
 ├─ docs/ARCHITECTURE.md           lead only
 ├─ docs/PLAN.md                   everyone ticks own boxes
@@ -165,7 +165,7 @@ All routes: JSON in, JSON out. Errors return `{ error: string }` with a 4xx/5xx 
 | `POST /api/nodes` | `{ mapId, title, type, effort, description?, rationale?, files?, parentId? }` | `{ map }` | Manually add an idea (steer the map yourself, not just accept AI suggestions). `origin: "manual"`, `status: "suggested"`; `createdBy` set from the signed-in user if any. Logged as a `create` event. |
 | `POST /api/expand` | `{ mapId, nodeId }` | `{ map }` | Gemini generates 3–5 children for node |
 | `POST /api/build` | `{ mapId, nodeId }` | `{ map }` | Fetch node's files fresh → Gemini writes full new file contents → server builds diff → store `node.proposal` |
-| `POST /api/pr` | `{ mapId, nodeId }` | `{ map }` | Uses stored proposal → branch `projectgraph/<nodeId>` → commit files → open PR → `status = "pr_open"` |
+| `POST /api/pr` | `{ mapId, nodeId }` | `{ map }` | Uses stored proposal → branch `spitball/<nodeId>` → commit files → open PR → `status = "pr_open"` |
 | `POST /api/sync` | `{ mapId }` | `{ map, changed: boolean }` | Compare `lastSyncedSha...defaultBranch`. If new commits: mark shipped, detect new work, sprout ideas |
 
 ### Manual planning (built)
@@ -207,7 +207,7 @@ Without sign-in, the app uses one service token (`GITHUB_TOKEN`): it can read an
 
 **pr** (Octokit, contents API, no git trees needed)
 1. `git.getRef heads/<defaultBranch>` → base sha.
-2. `git.createRef refs/heads/projectgraph/<nodeId>`.
+2. `git.createRef refs/heads/spitball/<nodeId>`.
 3. For each change: `repos.createOrUpdateFileContents` on that branch (pass existing file `sha` when updating).
 4. `pulls.create` → save `{ number, url, branch }`, `status: "pr_open"`, event `pr`.
 
@@ -277,7 +277,7 @@ Ctrl/Cmd-click toggles a node into a multi-selection (a dashed sky-blue ring, di
   - pr_open: link to PR · Expand
   - shipped: commit sha · Expand
 - **Polling:** `setInterval(sync, 20000)` on the map page. Pause it while a build or PR request is in flight.
-- Reference prototype: the clickable HTML mock (ProjectGraph artifact) shows the intended look and interactions.
+- Reference prototype: the clickable HTML mock (Spitball artifact) shows the intended look and interactions.
 
 ## 9. Environment variables (`.env.local`, never committed)
 

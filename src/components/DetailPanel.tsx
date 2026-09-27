@@ -49,7 +49,7 @@ function copyViaVsCode(text: string): Promise<boolean> {
   if (window.parent === window) return Promise.resolve(false);
   return new Promise((resolve) => {
     const onMessage = (e: MessageEvent) => {
-      if (e.source !== window.parent || e.data?.type !== "projectgraph:copied") return;
+      if (e.source !== window.parent || e.data?.type !== "spitball:copied") return;
       window.removeEventListener("message", onMessage);
       clearTimeout(timer);
       resolve(true);
@@ -60,7 +60,7 @@ function copyViaVsCode(text: string): Promise<boolean> {
       resolve(false);
     }, 800);
     window.addEventListener("message", onMessage);
-    window.parent.postMessage({ type: "projectgraph:copy", text }, "*");
+    window.parent.postMessage({ type: "spitball:copy", text }, "*");
   });
 }
 
@@ -184,7 +184,7 @@ export default function DetailPanel({
   // Local maps come from the VS Code extension: no GitHub, so no Build/PR, and file chips open in the editor.
   const local = isLocalMap(map);
   const embedded = typeof window !== "undefined" && window.parent !== window;
-  const openInEditor = (path: string) => window.parent.postMessage({ type: "projectgraph:openFile", path }, "*");
+  const openInEditor = (path: string) => window.parent.postMessage({ type: "spitball:openFile", path }, "*");
 
   async function run(label: string, fn: () => Promise<CodeMap>) {
     setBusy(label);

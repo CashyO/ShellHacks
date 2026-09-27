@@ -1,4 +1,4 @@
-# ProjectGraph — Build Plan
+# Spitball — Build Plan
 
 Hackathon clock: started **Fri 11 PM** (H0). Plan re-cut at about **Sat 12 PM (H13)**.
 **MVP target: Sat 11 PM (H24), 11 hours from the re-cut.** If the core loop isn't passing then, the freeze may slide to **2 AM at the latest**. After that, only bug fixes, no new features. Submission deadline **Sun 11 AM**. Submit by **10 AM**.

@@ -3,8 +3,8 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 // "Sign in with GitHub" session: the user's GitHub token lives ONLY in this encrypted, httpOnly cookie.
 // The browser can't read it, and the server needs SESSION_SECRET to open it.
 
-export const SESSION_COOKIE = "pg_session";
-export const STATE_COOKIE = "pg_oauth_state";
+export const SESSION_COOKIE = "sb_session";
+export const STATE_COOKIE = "sb_oauth_state";
 const WEEK = 60 * 60 * 24 * 7;
 
 export interface Session {

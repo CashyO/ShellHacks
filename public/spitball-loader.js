@@ -1,5 +1,5 @@
 /*!
- * spitball-loader.js — one-shot loading overlay for ProjectGraph.
+ * spitball-loader.js — one-shot loading overlay for Spitball.
  * Vanilla JS, no dependencies. Works as a <script> (window.SpitballLoader) or CommonJS require.
  *
  *   SpitballLoader.start({ color: '#E53935', backdrop: 'flow' });  // show overlay, straw slides in

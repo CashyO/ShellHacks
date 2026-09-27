@@ -42,7 +42,7 @@ export async function GET(req: Request) {
     if (!tokenData.access_token) return fail(tokenData.error_description ?? "GitHub didn't return a token");
 
     const userRes = await fetch("https://api.github.com/user", {
-      headers: { Authorization: `Bearer ${tokenData.access_token}`, "User-Agent": "projectgraph", Accept: "application/vnd.github+json" },
+      headers: { Authorization: `Bearer ${tokenData.access_token}`, "User-Agent": "spitball", Accept: "application/vnd.github+json" },
     });
     if (!userRes.ok) return fail("Couldn't read your GitHub profile");
     const user = (await userRes.json()) as { login: string; avatar_url: string };
