@@ -14,6 +14,7 @@ export default function Graph(props: {
   map: CodeMap;
   selectedId: string;
   onSelect: (id: string) => void;
+  focusFile?: string;
 }) {
   return <GraphCanvas {...props} />;
 }
