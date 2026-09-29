@@ -10,8 +10,8 @@ Tick boxes as you finish them. Each phase has an **exit check**; don't start the
 | Who | Strength | Role | Owns (files) |
 |---|---|---|---|
 | **Joeco** | UI/UX | **P1 Graph + look and feel** | `Graph.tsx`, `GraphCanvas.tsx`, `Legend.tsx`, `map/[id]/page.tsx` (layout), `page.tsx` (landing), `Header.tsx`, `globals.css` |
-| **Julian** | Python, learning frontend | **P2 Panels + demo repo + deploy** | `DetailPanel.tsx`, `DiffView.tsx`, `ActivityFeed.tsx`, the **demo repo** (`chronos-scheduler`), **DigitalOcean deploy + domain** |
-| **Sebastian** | Integration | **P4 GitHub + DB + wiring** | `github.ts`, `db.ts`, `api-client.ts`, routes `maps`, `pr`, `sync`, wiring polling and state into the map page, keys and accounts |
+| **Julian** | Python, learning frontend | **P2 Panels + demo repo + deploy** | `DetailPanel.tsx`, `DiffView.tsx`, `ActivityFeed.tsx`, the **demo repo** (`chronos-scheduler`), **DigitalOcean deploy + domain** | 
+| **Sebastian** | Integration | **P4 GitHub + DB + wiring** | `github.ts`, `db.ts`, `api-client.ts`, routes `maps`, `pr`, `sync`, wiring polling and state into the map page, keys and accounts, test |
 | **Josiah** | Architecture, ideas | **P3 AI + lead** | `types.ts`, `schemas.ts`, `prompts.ts`, `gemini.ts`, `mock.ts`, routes `analyze`, `expand`, `build`, review/merge, demo script, Devpost |
 
 Why this split: everyone starts **unblocked**. The frontend pair builds against the mock API (`MOCK_MODE=true`). The backend pair builds against the shared types. Julian's demo repo and deploy need no deep code and surface problems early. Sebastian carries the riskiest code (PR, sync), so those two jobs were moved off him.
